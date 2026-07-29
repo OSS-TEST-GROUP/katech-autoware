@@ -1,7 +1,7 @@
 # Autoware 파티션 빌드 시스템
 
 PC/BSP 보드에서 빌드, 실행 및 Planning Simulation을 검증하는 절차는 repo 루트의
-[`README_KATECH.md`](../README_KATECH.md)를 기준으로 합니다.
+[`README.md`](../README.md)를 기준으로 합니다.
 
 ## 1. 개요
 

@@ -13,6 +13,7 @@ log/
 /src/
 tools/
 rosbag/
+/partition/sample-adsw-*_Dockerfile
 
 # Python
 *.pyc
