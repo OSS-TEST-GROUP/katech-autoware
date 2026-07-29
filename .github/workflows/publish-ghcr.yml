@@ -2,11 +2,6 @@ name: Publish Autoware Partition images to GHCR
 
 on:
   workflow_dispatch:
-    inputs:
-      source_repository:
-        description: Source image repository
-        required: true
-        default: junohb/autoware-partition
 
 permissions:
   contents: read
@@ -28,14 +23,13 @@ jobs:
 
       - name: Publish multi-architecture images
         env:
-          SOURCE_REPOSITORY: ${{ inputs.source_repository }}
-          TARGET_REPOSITORY: ghcr.io/oss-test-group/autoware-partition
+          REPOSITORY: ghcr.io/oss-test-group/autoware-partition
         run: |
           set -euo pipefail
 
           for tag in adsw-perception adsw-decision adsw-control; do
             docker buildx imagetools create \
-              --tag "${TARGET_REPOSITORY}:${tag}" \
-              "docker.io/${SOURCE_REPOSITORY}:sample-${tag}-amd64" \
-              "docker.io/${SOURCE_REPOSITORY}:sample-${tag}-arm64"
+              --tag "${REPOSITORY}:${tag}" \
+              "${REPOSITORY}:${tag}-amd64" \
+              "${REPOSITORY}:${tag}-arm64"
           done
