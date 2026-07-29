@@ -1,0 +1,41 @@
+name: Publish Autoware Partition images to GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Source image repository
+        required: true
+        default: junohb/autoware-partition
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish multi-architecture images
+        env:
+          SOURCE_REPOSITORY: ${{ inputs.source_repository }}
+          TARGET_REPOSITORY: ghcr.io/oss-test-group/autoware-partition
+        run: |
+          set -euo pipefail
+
+          for tag in adsw-perception adsw-decision adsw-control; do
+            docker buildx imagetools create \
+              --tag "${TARGET_REPOSITORY}:${tag}" \
+              "docker.io/${SOURCE_REPOSITORY}:sample-${tag}-amd64" \
+              "docker.io/${SOURCE_REPOSITORY}:sample-${tag}-arm64"
+          done
