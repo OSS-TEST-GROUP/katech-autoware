@@ -14,7 +14,7 @@
 - Autoware 모듈화: 기능별 역할을 세 파티션으로 분리하고 독립적인 이미지로 구성합니다.
 - 재현 가능한 배포: 공개 Git 저장소, Docker 이미지와 맵 경로를 기준으로 실행 절차를 통일합니다.
 - BSP 보드와 외부 PC 연동: ARM64 BSP 보드에서 Autoware를 실행하고 AMD64 PC에서 RViz2로 시각화·조작합니다.
-- No-CUDA 기준: 현재 검증 범위에서 CUDA 이미지와 NVIDIA runtime을 제외합니다.
+- 기본 No-CUDA 기준: Planning Simulation은 기존 CPU 이미지를 유지하고, CARLA 프로파일에서만 Perception에 CUDA를 사용합니다.
 
 | 항목 | 현재 기준 |
 | --- | --- |
@@ -22,11 +22,11 @@
 | ROS / OS | ROS 2 Humble / Ubuntu 22.04 Jammy |
 | 지원 아키텍처 | linux/amd64, linux/arm64 |
 | 실행 시나리오 | Planning Simulation - Lane Driving |
-| GPU 정책 | No-CUDA 빌드 및 실행 |
+| GPU 정책 | 기본 No-CUDA, CARLA 프로파일은 Perception만 CUDA(amd64) |
 
 표 1. 문서 적용 범위
 
-> 현재 배포 기준 CUDA 빌드와 CUDA 실행은 BSP 보드에서의 RViz 및 runtime 차이를 줄이기 위해 사용하지 않습니다. 이미지 빌드에는 --no-cuda, 수동 실행에는 --no-nvidia를 사용합니다.
+> 기존 Planning Simulation 배포는 `--no-cuda`를 유지합니다. CARLA 프로파일은 NVIDIA GPU가 있는 `linux/amd64` 호스트에서만 별도로 빌드하고 실행합니다.
 
 ## 2. Partitioning Approach
 
@@ -194,7 +194,7 @@ git lfs pull
 | 구분 | 저장소 | 브랜치 |
 | --- | --- | --- |
 | 상위 저장소 | github.com/OSS-TEST-GROUP/katech-autoware | main |
-| Autoware Universe | github.com/OSS-TEST-GROUP/katech-autoware-universe | main |
+| Autoware Universe | github.com/OSS-TEST-GROUP/katech-autoware-universe | 7d4cf908b2c5113164e9e5a311071ed3c4aeb693 |
 
 표 6. 공개 소스 저장소
 
@@ -204,7 +204,7 @@ Autoware 저장소에서 가져오는 autoware.repos 항목은 다음과 같습�
 universe/autoware.universe:
 type: git
 url: https://github.com/OSS-TEST-GROUP/katech-autoware-universe.git
-version: main
+version: 7d4cf908b2c5113164e9e5a311071ed3c4aeb693
 ```
 
 ### 4.3 맵 데이터 준비
@@ -299,6 +299,31 @@ ghcr.io/oss-test-group/autoware-partition:adsw-control
 사용합니다.
 
 ARM64 이미지는 ARM64 BSP 보드에서, AMD64 이미지는 x86_64 PC에서 네이티브 빌드하는 방식을 권장합니다. QEMU 교차 빌드는 가능하지만 빌드 시간이 길고 메모리 사용량이 증가합니다.
+
+### 5.3 CARLA + CUDA 이미지 빌드
+
+외부 시험 담당자용 절차는 [CARLA 빌드 및 연동 시험 안내](docs/carla-build-guide.md)를 참고합니다. 전체 이미지 빌드와 CARLA 주행은 아직 검증 전입니다.
+
+CARLA 프로파일은 Perception만 CUDA 이미지로 빌드하고 Decision과 Control은 CPU 이미지로 유지합니다. CARLA 0.9.15 Python API는 Ubuntu 22.04/Python 3.10용 amd64 wheel을 SHA-256으로 검증한 뒤 Perception 이미지에만 설치합니다.
+
+```bash
+cd "$HOME/oss/oss_adsw"
+REPO=ghcr.io/oss-test-group/autoware-partition
+./partition/partition_build.sh \
+  --repo "$REPO" \
+  --platform linux/amd64 \
+  --carla
+```
+
+생성되는 이미지는 다음과 같습니다.
+
+```text
+ghcr.io/oss-test-group/autoware-partition:adsw-perception-carla-cuda
+ghcr.io/oss-test-group/autoware-partition:adsw-decision-carla
+ghcr.io/oss-test-group/autoware-partition:adsw-control-carla
+```
+
+CARLA 서버 자체는 이 빌드에 포함되지 않습니다. 외부 담당자가 CARLA 0.9.15 서버를 먼저 실행해야 합니다.
 
 ## 6. 파티션 실행
 
@@ -454,6 +479,36 @@ ROS_DOMAIN_ID=42 ./partition/partition_run.sh --rm --no-nvidia \
 ```
 
 > Domain 일치 세 명령은 반드시 같은 ROS_DOMAIN_ID를 사용해야 합니다. host에서 다른 Autoware가 실행 중이면 다른 domain을 사용하거나 해당 노드를 종료합니다.
+
+### 6.5 CARLA 연동 실행
+
+CARLA 모드에서는 기존 dummy perception과 dummy vehicle simulator를 실행하지 않습니다. Perception 컨테이너의 `autoware_carla_interface`가 외부 CARLA 서버에 접속하며, Control에서 생성된 명령도 같은 인터페이스를 통해 CARLA로 전달합니다.
+
+CARLA와 일치하는 Lanelet2/pointcloud 맵 경로를 반드시 명시합니다.
+
+```bash
+cd "$HOME/oss/oss_adsw"
+REPO=ghcr.io/oss-test-group/autoware-partition
+MAP_PATH="$HOME/autoware_map/Town01"
+
+./partition/run_partitions.sh \
+  --repo "$REPO" \
+  --map-path "$MAP_PATH" \
+  --domain-id 42 \
+  --simulator-mode carla \
+  --carla-host 127.0.0.1 \
+  --carla-port 2000 \
+  --carla-map Town01
+```
+
+CARLA가 다른 PC에서 실행되면 `--carla-host`에 해당 PC의 IP 주소를 지정합니다. CARLA RPC 포트가 방화벽에서 허용되어 있어야 하며, CARLA와 Autoware 측 Python API 버전은 모두 0.9.15여야 합니다. RViz가 필요 없는 경우 `--headless`를 추가합니다.
+
+실행 후 다음 항목을 확인합니다.
+
+1. Perception 로그에 CARLA client/server 버전 불일치 경고가 없는지 확인합니다.
+2. `/clock`, `/sensing/lidar/top/pointcloud_before_sync`, `/vehicle/status/velocity_status`가 발행되는지 확인합니다.
+3. dummy perception, simple planning simulator 및 중복 `autoware_raw_vehicle_cmd_converter` 노드가 없는지 확인합니다.
+4. RViz에서 초기 pose, goal, Engage를 설정한 뒤 CARLA의 ego 차량이 움직이는지 확인합니다.
 
 ## 7. Planning Simulation 테스트
 

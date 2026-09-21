@@ -10,6 +10,7 @@ print_help() {
     echo "  -h              Display this help message"
     echo "  --repo          Docker image repository (default: ghcr.io/oss-test-group/autoware-partition)"
     echo "  --no-cuda       Disable CUDA support"
+    echo "  --carla         Build CARLA 0.9.15 + CUDA for Perception only"
     echo "  --platform      Specify the platform (default: current platform)"
     echo "  --devel-only    Build devel image only"
     echo "  --push          Reserved for --native-staging (direct legacy push is blocked)"
@@ -53,7 +54,6 @@ partitions=()
 repo="${PARTITION_IMAGE_REPO:-ghcr.io/oss-test-group/autoware-partition}"
 image_namespace="${PARTITION_IMAGE_NAMESPACE:-ghcr.io/oss-test-group}"
 output_type="--load"
-option_no_cuda=false
 option_platform=""
 option_devel_only=false
 native_staging=false
@@ -62,6 +62,8 @@ snapshot_tag=""
 setup_args=""
 ssh_allow_option=()
 ssh_set_option=()
+cuda_profile="all"
+requested_cuda_profile=""
 
 # shellcheck source=../release/tagging.sh
 source "$RELEASE_DIR/tagging.sh"
@@ -75,7 +77,20 @@ parse_arguments() {
             exit 0
             ;;
         --no-cuda)
-            option_no_cuda=true
+            if [ -n "$requested_cuda_profile" ] && [ "$requested_cuda_profile" != "none" ]; then
+                echo "ERROR: --no-cuda and --carla are mutually exclusive." >&2
+                exit 1
+            fi
+            requested_cuda_profile="none"
+            cuda_profile="none"
+            ;;
+        --carla)
+            if [ -n "$requested_cuda_profile" ] && [ "$requested_cuda_profile" != "carla" ]; then
+                echo "ERROR: --no-cuda and --carla are mutually exclusive." >&2
+                exit 1
+            fi
+            requested_cuda_profile="carla"
+            cuda_profile="carla"
             ;;
         --platform)
             option_platform="$2"
@@ -117,11 +132,8 @@ parse_arguments() {
 
 # Set CUDA options
 set_cuda_options() {
-    if [ "$option_no_cuda" = "true" ]; then
+    if [ "$cuda_profile" = "none" ]; then
         setup_args="--no-nvidia"
-        image_name_suffix=""
-    else
-        image_name_suffix="-cuda"
     fi
 }
 
@@ -144,6 +156,11 @@ set_platform() {
             platform="linux/arm64"
         fi
     fi
+
+    if [ "$cuda_profile" = "carla" ] && [ "$platform" != "linux/amd64" ]; then
+        echo "ERROR: the CARLA 0.9.15 Python API profile supports linux/amd64 only." >&2
+        exit 1
+    fi
 }
 
 validate_native_staging_options() {
@@ -160,7 +177,7 @@ validate_native_staging_options() {
         exit 1
     fi
 
-    if [ "$option_no_cuda" != "true" ]; then
+    if [ "$cuda_profile" != "none" ]; then
         echo "ERROR: the current release scope is No-CUDA; add --no-cuda." >&2
         exit 1
     fi
@@ -323,6 +340,11 @@ configuration_and_build() {
 
         packages=$(jq -r '.packages // [] | .[]' "$file")
 
+        if [ "$cuda_profile" = "carla" ] && [ "$partition_name" = "sample-adsw-perception" ]; then
+            carla_packages=$(jq -r '.carla_packages // [] | .[]' "$file")
+            packages="${packages}"$'\n'"${carla_packages}"
+        fi
+
         echo "$packages"
 
         pkg_paths=$(get_pkg_path "${packages}")
@@ -370,7 +392,7 @@ build_base_images() {
     echo "Base image: $base_image"
     echo "Setup args: $setup_args"
     echo "Lib dir: $lib_dir"
-    echo "Image name suffix: $image_name_suffix"
+    echo "CUDA profile: $cuda_profile"
 
     base_option=()
     base_option+=("$output_type")
@@ -382,7 +404,8 @@ build_base_images() {
         base_option+=("--provenance=false")
         base_option+=("--set" "*.platform=$platform")
     elif [ "$output_type" = "--push" ]; then
-        base_option+=("--set" "*.platform=linux/amd64,linux/arm64")
+        base_option+=("--set" "*.platform=linux/amd64")
+        base_option+=("--set" "*.platform+=linux/arm64")
     else
         base_option+=("--set" "*.platform=$platform")
     fi
@@ -401,7 +424,7 @@ build_base_images() {
     fi
 
     base_targets=("base")
-    if [ "$option_no_cuda" != "true" ]; then
+    if [ "$cuda_profile" != "none" ]; then
         base_targets+=("base-cuda")
     fi
 
@@ -415,7 +438,32 @@ build_images() {
     local partition_name="$1"
     local image_tag="${partition_name#sample-}"
     local target_repo="$repo"
-    local target_tag="${image_tag}${image_name_suffix}"
+    local stage_suffix=""
+    local tag_suffix=""
+    local install_carla_python_api="false"
+
+    case "$cuda_profile" in
+    all)
+        stage_suffix="-cuda"
+        tag_suffix="-cuda"
+        ;;
+    carla)
+        if [ "$partition_name" = "sample-adsw-perception" ]; then
+            stage_suffix="-cuda"
+            tag_suffix="-carla-cuda"
+            install_carla_python_api="true"
+        else
+            tag_suffix="-carla"
+        fi
+        ;;
+    none)
+        ;;
+    *)
+        echo "ERROR: unsupported CUDA profile: $cuda_profile" >&2
+        exit 1
+        ;;
+    esac
+    local target_tag="${image_tag}${tag_suffix}"
     # https://github.com/docker/buildx/issues/484
     export BUILDKIT_STEP_LOG_MAX_SIZE=10000000
 
@@ -424,9 +472,10 @@ build_images() {
     echo "Base image: $base_image"
     echo "Setup args: $setup_args"
     echo "Lib dir: $lib_dir"
-    echo "Image name suffix: $image_name_suffix"
+    echo "CUDA profile: $cuda_profile"
     #echo "Targets: ${targets[*]}"
     echo "Stage: $1"
+    echo "Image tag: $image_tag$tag_suffix"
 
     if [ "$native_staging" = "true" ]; then
         release_arch=$(release_platform_arch "$platform")
@@ -459,11 +508,13 @@ build_images() {
     build_option+=("--set" "*.args.AUTOWARE_BASE_IMAGE=$autoware_base_image")
     build_option+=("--set" "*.args.AUTOWARE_BASE_CUDA_IMAGE=$autoware_base_cuda_image")
     build_option+=("--set" "*.args.SETUP_ARGS=$setup_args")
+    build_option+=("--set" "*.args.INSTALL_CARLA_PYTHON_API=$install_carla_python_api")
     #build_option+=("--set" "*.args.LIB_DIR=$lib_dir")
     #build_option+=("--set" "partition.tags=$repo:${partition_name}-${lib_dir}")
     build_option+=("--set" "partition*.tags=${target_repo}:${target_tag}")
     build_option+=("--set" "partition*.dockerfile=partition/${partition_name}_Dockerfile")
-    build_option+=("--set" "partition*.target=${partition_name}${image_name_suffix}")
+    build_option+=("--set" "partition*.target=${partition_name}${stage_suffix}")
+    build_option+=("--set" "*.platform=$platform")
     if [ "$native_staging" = "true" ]; then
         build_option+=("--provenance=false")
         build_option+=("--set" "*.platform=$platform")

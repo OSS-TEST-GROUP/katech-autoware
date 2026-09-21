@@ -254,6 +254,9 @@ LABEL org.opencontainers.image.source="https://github.com/OSS-TEST-GROUP/katech-
       org.opencontainers.image.version="${OCI_VERSION}"
 ARG ROS_DISTRO
 ARG TARGETPLATFORM
+ARG INSTALL_CARLA_PYTHON_API=false
+ARG CARLA_PYTHON_API_URL="https://github.com/gezp/carla_ros/releases/download/carla-0.9.15-ubuntu-22.04/carla-0.9.15-cp310-cp310-linux_x86_64.whl"
+ARG CARLA_PYTHON_API_SHA256="d8766616df2511a58ac152ccc53e3307a84ccef9e7fb7108006667188d5766f8"
 
 # Set up runtime environment and artifacts
 COPY --from=%PARTITION_NAME%-depend /rosdep-%PARTITION_NAME%-exec-depend-packages.txt /tmp/rosdep-%PARTITION_NAME%-exec-depend-packages.txt
@@ -272,6 +275,20 @@ RUN --mount=type=ssh \
      fi \
   && echo "LIB_DIR =============================is $LIB_DIR" \
   && /autoware/cleanup_system.sh $LIB_DIR $ROS_DISTRO
+
+# The CARLA 0.9.15 client wheel is built for Ubuntu 22.04 / Python 3.10 / amd64.
+# Install it only in the dedicated CARLA perception image and verify the exact
+# artifact before pip sees it.
+RUN set -e; if [ "$INSTALL_CARLA_PYTHON_API" = "true" ]; then \
+      [ "$TARGETPLATFORM" = "linux/amd64" ] || { \
+        echo "CARLA Python API only supports linux/amd64 in this release" >&2; \
+        exit 1; \
+      }; \
+      curl -fL "$CARLA_PYTHON_API_URL" -o /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
+      echo "$CARLA_PYTHON_API_SHA256  /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl" | sha256sum -c -; \
+      python3 -m pip install --no-cache-dir /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
+      rm -f /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
+    fi
 
 COPY --from=%PARTITION_NAME%-devel-cuda /opt/autoware /opt/autoware
 

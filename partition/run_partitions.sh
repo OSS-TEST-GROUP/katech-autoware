@@ -15,6 +15,13 @@ HOST_SOURCE_DIR="${HOST_SOURCE_DIR:-$HOME/source}"
 LOG_DIR="$WORKSPACE_ROOT/log"
 HEADLESS=false
 NETWORK_INTERFACE=""
+SIMULATOR_MODE="dummy"
+CARLA_HOST="127.0.0.1"
+CARLA_PORT="2000"
+CARLA_MAP="Town01"
+CARLA_TIMEOUT="20"
+CARLA_SPAWN_POINT="None"
+MAP_PATH_EXPLICIT=false
 
 print_help() {
     cat <<'EOF'
@@ -29,6 +36,12 @@ Options:
   --delay <sec>          Delay between partitions (default: 10)
   --headless             Disable RViz on the Autoware host
   --network-interface <if> Cyclone DDS network interface (e.g., eth0)
+  --simulator-mode <mode> Simulator profile: dummy or carla (default: dummy)
+  --carla-host <host>    CARLA server hostname/IP (default: 127.0.0.1)
+  --carla-port <port>    CARLA RPC port (default: 2000)
+  --carla-map <name>     CARLA map name (default: Town01)
+  --carla-timeout <sec>  CARLA connection timeout (default: 20)
+  --carla-spawn-point <value> Ego spawn point or None (default: None)
   --help, -h             Show this help
 
 Logs are written under /workspace/log inside each container.
@@ -52,6 +65,7 @@ while [ "${1:-}" != "" ]; do
         ;;
     --map-path)
         MAP_PATH="$2"
+        MAP_PATH_EXPLICIT=true
         shift
         ;;
     --domain-id)
@@ -69,6 +83,30 @@ while [ "${1:-}" != "" ]; do
         NETWORK_INTERFACE="$2"
         shift
         ;;
+    --simulator-mode)
+        SIMULATOR_MODE="$2"
+        shift
+        ;;
+    --carla-host)
+        CARLA_HOST="$2"
+        shift
+        ;;
+    --carla-port)
+        CARLA_PORT="$2"
+        shift
+        ;;
+    --carla-map)
+        CARLA_MAP="$2"
+        shift
+        ;;
+    --carla-timeout)
+        CARLA_TIMEOUT="$2"
+        shift
+        ;;
+    --carla-spawn-point)
+        CARLA_SPAWN_POINT="$2"
+        shift
+        ;;
     --help | -h)
         print_help
         exit 0
@@ -82,9 +120,47 @@ while [ "${1:-}" != "" ]; do
     shift
 done
 
+case "$SIMULATOR_MODE" in
+dummy | carla)
+    ;;
+*)
+    echo "Unsupported simulator mode: $SIMULATOR_MODE (expected dummy or carla)" >&2
+    exit 1
+    ;;
+esac
+
+if ! [[ "$CARLA_PORT" =~ ^[0-9]+$ ]] || [ "$CARLA_PORT" -lt 1 ] || [ "$CARLA_PORT" -gt 65535 ]; then
+    echo "Invalid CARLA port: $CARLA_PORT" >&2
+    exit 1
+fi
+
+if ! [[ "$CARLA_TIMEOUT" =~ ^[0-9]+$ ]] || [ "$CARLA_TIMEOUT" -lt 1 ]; then
+    echo "Invalid CARLA timeout: $CARLA_TIMEOUT" >&2
+    exit 1
+fi
+
+if [ "$SIMULATOR_MODE" = "carla" ] && [ "$MAP_PATH_EXPLICIT" != "true" ]; then
+    echo "CARLA mode requires --map-path pointing to the matching CARLA Lanelet2 map." >&2
+    exit 1
+fi
+
+if [ "$SIMULATOR_MODE" = "carla" ] && [ "$(uname -m)" != "x86_64" ]; then
+    echo "CARLA mode requires an x86_64 host for the pinned Python API wheel." >&2
+    exit 1
+fi
+
 if [ ! -d "$MAP_PATH" ]; then
     echo "Map path does not exist: $MAP_PATH" >&2
     exit 1
+fi
+
+if [ "$SIMULATOR_MODE" = "carla" ]; then
+    for required_map_file in lanelet2_map.osm pointcloud_map.pcd map_projector_info.yaml; do
+        if [ ! -f "$MAP_PATH/$required_map_file" ]; then
+            echo "CARLA map file is missing: $MAP_PATH/$required_map_file" >&2
+            exit 1
+        fi
+    done
 fi
 
 if [ -n "$NETWORK_INTERFACE" ] && ! ip link show "$NETWORK_INTERFACE" >/dev/null 2>&1; then
@@ -128,6 +204,11 @@ COMMON_ARGS=(
     -e "LOCAL_GROUP=$(id -gn)"
     -e "FASTDDS_BUILTIN_TRANSPORTS=UDPv4"
     -e "ROS_DOMAIN_ID=$ROS_DOMAIN"
+    -e "CARLA_HOST=$CARLA_HOST"
+    -e "CARLA_PORT=$CARLA_PORT"
+    -e "CARLA_MAP=$CARLA_MAP"
+    -e "CARLA_TIMEOUT=$CARLA_TIMEOUT"
+    -e "CARLA_SPAWN_POINT=$CARLA_SPAWN_POINT"
     "${DDS_ARGS[@]}"
     -e "XAUTHORITY=${XAUTHORITY:-}"
     -e "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-}"
@@ -173,6 +254,12 @@ start_partition() {
     else
         image="${REPO}:${component}"
     fi
+    local use_gpu="${6:-false}"
+    local runtime_args=()
+
+    if [ "$use_gpu" = "true" ]; then
+        runtime_args+=(--gpus all)
+    fi
 
     remove_stale_container "$name"
 
@@ -181,6 +268,7 @@ start_partition() {
         --name "$name" \
         "${COMMON_ARGS[@]}" \
         "${X_ARGS[@]}" \
+        "${runtime_args[@]}" \
         "$image" \
         bash -lc "mkdir -p /workspace/log && $script > /workspace/log/$log_file 2>&1" >/dev/null
 }
@@ -195,20 +283,46 @@ echo "ROS_DOMAIN_ID: $ROS_DOMAIN"
 echo "Delay: ${START_DELAY}s"
 echo "Headless: $HEADLESS"
 echo "DDS interface: ${NETWORK_INTERFACE:-auto}"
-echo "CUDA: disabled"
+echo "Simulator mode: $SIMULATOR_MODE"
+if [ "$SIMULATOR_MODE" = "carla" ]; then
+    echo "CARLA server: ${CARLA_HOST}:${CARLA_PORT} (${CARLA_MAP})"
+    echo "CUDA: enabled for Perception only"
+else
+    echo "CUDA: disabled"
+fi
 echo "Logs: $LOG_DIR"
 echo
 
+PERCEPTION_TAG="adsw-perception"
+DECISION_TAG="adsw-decision"
+CONTROL_TAG="adsw-control"
 PERCEPTION_COMMAND="/autoware/start_script/adsw-perception.sh"
-if [ "$HEADLESS" = "true" ]; then
+DECISION_COMMAND="/autoware/start_script/adsw-decision.sh"
+CONTROL_COMMAND="/autoware/start_script/adsw-control.sh"
+PERCEPTION_GPU=false
+
+if [ "$SIMULATOR_MODE" = "carla" ]; then
+    PERCEPTION_TAG="adsw-perception-carla-cuda"
+    DECISION_TAG="adsw-decision-carla"
+    CONTROL_TAG="adsw-control-carla"
+    PERCEPTION_COMMAND="/autoware/start_script/adsw-perception-carla.sh"
+    DECISION_COMMAND="/autoware/start_script/adsw-decision-carla.sh"
+    CONTROL_COMMAND="/autoware/start_script/adsw-control-carla.sh"
+    PERCEPTION_GPU=true
+    if [ "$HEADLESS" = "true" ]; then
+        COMMON_ARGS+=(-e "AUTOWARE_RVIZ=false")
+    else
+        COMMON_ARGS+=(-e "AUTOWARE_RVIZ=true")
+    fi
+elif [ "$HEADLESS" = "true" ]; then
     PERCEPTION_COMMAND="ros2 launch obigo_launch sample_adsw_perception_run.launch.xml map_path:=/autoware_map vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false"
 fi
 
-start_partition "perception" "${CONTAINERS[0]}" "adsw-perception" "$PERCEPTION_COMMAND" "perception_log.txt"
+start_partition "perception" "${CONTAINERS[0]}" "$PERCEPTION_TAG" "$PERCEPTION_COMMAND" "perception_log.txt" "$PERCEPTION_GPU"
 sleep "$START_DELAY"
-start_partition "decision" "${CONTAINERS[1]}" "adsw-decision" "/autoware/start_script/adsw-decision.sh" "decision_log.txt"
+start_partition "decision" "${CONTAINERS[1]}" "$DECISION_TAG" "$DECISION_COMMAND" "decision_log.txt"
 sleep "$START_DELAY"
-start_partition "control" "${CONTAINERS[2]}" "adsw-control" "/autoware/start_script/adsw-control.sh" "control_log.txt"
+start_partition "control" "${CONTAINERS[2]}" "$CONTROL_TAG" "$CONTROL_COMMAND" "control_log.txt"
 
 echo
 echo "All partitions are running. Press Ctrl-C to stop them."

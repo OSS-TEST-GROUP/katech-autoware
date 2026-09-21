@@ -20,6 +20,10 @@
     "tier4_perception_launch",
     "tier4_sensing_launch"
   ],
+  "carla_packages": [
+    "autoware_carla_interface",
+    "autoware_raw_vehicle_cmd_converter"
+  ],
   "folders": [
     "src/param",
     "src/sensor_component",
