@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+state_dir="${MOCK_REGISTRY_STATE:?MOCK_REGISTRY_STATE is required}"
+snapshot="${MOCK_SNAPSHOT_TAG:?MOCK_SNAPSHOT_TAG is required}"
+source_sha="${MOCK_SOURCE_SHA:?MOCK_SOURCE_SHA is required}"
+mkdir -p "$state_dir"
+
+key_for_ref() {
+    printf '%s' "$1" | tr '/:@' '____'
+}
+
+component_for_ref() {
+    case "$1" in
+    *adsw-perception*)
+        printf '%s\n' adsw-perception
+        ;;
+    *adsw-decision*)
+        printf '%s\n' adsw-decision
+        ;;
+    *adsw-control*)
+        printf '%s\n' adsw-control
+        ;;
+    *)
+        exit 1
+        ;;
+    esac
+}
+
+digests_for_component() {
+    case "$1" in
+    adsw-perception)
+        printf '%s\n' \
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" \
+            "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        ;;
+    adsw-decision)
+        printf '%s\n' \
+            "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" \
+            "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" \
+            "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        ;;
+    adsw-control)
+        printf '%s\n' \
+            "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" \
+            "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" \
+            "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        ;;
+    esac
+}
+
+manifest_for_component() {
+    local component="$1"
+    local amd64_digest
+    local arm64_digest
+    local combined_digest
+    mapfile -t component_digests < <(digests_for_component "$component")
+    amd64_digest="${component_digests[0]}"
+    arm64_digest="${component_digests[1]}"
+    combined_digest="${component_digests[2]}"
+    jq -cn \
+        --arg digest "$combined_digest" \
+        --arg amd64 "$amd64_digest" \
+        --arg arm64 "$arm64_digest" \
+        '{
+          schemaVersion: 2,
+          digest: $digest,
+          manifests: [
+            {digest: $amd64, platform: {os: "linux", architecture: "amd64"}},
+            {digest: $arm64, platform: {os: "linux", architecture: "arm64"}}
+          ]
+        }'
+}
+
+if [ "$1" != "buildx" ] || [ "$2" != "imagetools" ]; then
+    echo "unexpected mock docker command: $*" >&2
+    exit 1
+fi
+
+case "$3" in
+inspect)
+    ref="$4"
+    format="$6"
+    component=$(component_for_ref "$ref")
+    mapfile -t component_digests < <(digests_for_component "$component")
+
+    if [[ "$ref" == *":${snapshot}-amd64" ]]; then
+        if [[ "$format" == *".Image"* ]]; then
+            revision="$source_sha"
+            if [ "${MOCK_BAD_NATIVE:-}" = "${component}-amd64" ]; then
+                revision="0000000000000000000000000000000000000000"
+            fi
+            jq -cn \
+                --arg revision "$revision" \
+                --arg version "$snapshot" \
+                '{
+                  architecture: "amd64",
+                  os: "linux",
+                  config: {Labels: {
+                    "org.opencontainers.image.revision": $revision,
+                    "org.opencontainers.image.ref.name": "main",
+                    "org.opencontainers.image.version": $version,
+                    "org.opencontainers.image.source": "https://github.com/OSS-TEST-GROUP/katech-autoware",
+                    "org.opencontainers.image.created": "2026-07-31T00:00:00Z"
+                  }}
+                }'
+        else
+            jq -cn --arg digest "${component_digests[0]}" '{digest: $digest}'
+        fi
+        exit 0
+    fi
+
+    if [[ "$ref" == *":${snapshot}-arm64" ]]; then
+        if [[ "$format" == *".Image"* ]]; then
+            revision="$source_sha"
+            if [ "${MOCK_BAD_NATIVE:-}" = "${component}-arm64" ]; then
+                revision="0000000000000000000000000000000000000000"
+            fi
+            jq -cn \
+                --arg revision "$revision" \
+                --arg version "$snapshot" \
+                '{
+                  architecture: "arm64",
+                  os: "linux",
+                  config: {Labels: {
+                    "org.opencontainers.image.revision": $revision,
+                    "org.opencontainers.image.ref.name": "main",
+                    "org.opencontainers.image.version": $version,
+                    "org.opencontainers.image.source": "https://github.com/OSS-TEST-GROUP/katech-autoware",
+                    "org.opencontainers.image.created": "2026-07-31T00:00:00Z"
+                  }}
+                }'
+        else
+            jq -cn --arg digest "${component_digests[1]}" '{digest: $digest}'
+        fi
+        exit 0
+    fi
+
+    key=$(key_for_ref "$ref")
+    if [ ! -f "$state_dir/$key" ]; then
+        exit 1
+    fi
+
+    if [ "${MOCK_BAD_RELEASE:-}" = "$component" ] && [[ "$ref" == *":v0.1.0" ]]; then
+        jq -cn --arg digest "sha256:9999999999999999999999999999999999999999999999999999999999999999" \
+            '{digest: $digest}'
+    else
+        manifest_for_component "$component"
+    fi
+    ;;
+create)
+    shift 3
+    tags=()
+    source_ref=""
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+        --tag)
+            tags+=("$2")
+            shift 2
+            ;;
+        *)
+            source_ref="$1"
+            shift
+            ;;
+        esac
+    done
+
+    [ "${#tags[@]}" -gt 0 ] || exit 1
+    for tag in "${tags[@]}"; do
+        key=$(key_for_ref "$tag")
+        printf '%s\n' "$source_ref" >"$state_dir/$key"
+    done
+    ;;
+*)
+    echo "unexpected mock imagetools command: $*" >&2
+    exit 1
+    ;;
+esac

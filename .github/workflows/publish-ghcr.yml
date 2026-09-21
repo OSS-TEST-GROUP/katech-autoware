@@ -1,16 +1,36 @@
-name: Publish Autoware Partition images to GHCR
+name: Publish verified Autoware Partition images
 
 on:
   workflow_dispatch:
+    inputs:
+      snapshot_tag:
+        description: Immutable snapshot shared by both native builds (main-YYYYMMDD-<shortsha>)
+        required: true
+        type: string
+      release_tag:
+        description: Existing annotated Git release tag on the same commit
+        required: true
+        default: v0.1.0
+        type: string
 
 permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: publish-adsw-release
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-22.04
+    environment: production
     steps:
+      - name: Check out the release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -21,15 +41,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish multi-architecture images
+      - name: Validate, assemble, and publish
         env:
-          REPOSITORY: ghcr.io/oss-test-group/autoware-partition
+          IMAGE_NAMESPACE: ghcr.io/oss-test-group
+          LEGACY_REPOSITORY: ghcr.io/oss-test-group/autoware-partition
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SNAPSHOT_TAG: ${{ inputs.snapshot_tag }}
+        shell: bash
         run: |
           set -euo pipefail
-
-          for tag in adsw-perception adsw-decision adsw-control; do
-            docker buildx imagetools create \
-              --tag "${REPOSITORY}:${tag}" \
-              "${REPOSITORY}:${tag}-amd64" \
-              "${REPOSITORY}:${tag}-arm64"
-          done
+          ./release/publish-ghcr.sh

@@ -1,6 +1,9 @@
 # Autoware Partition KATECH 가이드
 
-> Version 1.4 | 2026.07.29
+> Version 1.5 | 2026.07.31
+
+릴리즈 태그와 컨테이너 이미지 발행 절차는
+[KATECH 태깅 및 릴리즈 규칙](docs/release-tagging.md)을 따릅니다.
 
 ## 1. Overview
 
@@ -236,16 +239,17 @@ map_config.yaml
 
 ### 5.1 사전 빌드 이미지
 
-GitHub Container Registry(GHCR)의 공개 기본 태그는 linux/amd64와 linux/arm64
+GitHub Container Registry(GHCR)의 공개 릴리즈 태그는 linux/amd64와 linux/arm64
 manifest를 함께 포함합니다. Docker가 host 아키텍처에 맞는 이미지를 자동으로
 선택하므로 아키텍처 접미사나 재태깅이 필요하지 않습니다.
 
 ```bash
-REPO=ghcr.io/oss-test-group/autoware-partition
-docker pull "${REPO}:adsw-perception"
-docker pull "${REPO}:adsw-decision"
-docker pull "${REPO}:adsw-control"
-docker image inspect "${REPO}:adsw-perception" \
+IMAGE_NAMESPACE=ghcr.io/oss-test-group
+IMAGE_TAG=v0.1.0
+docker pull "${IMAGE_NAMESPACE}/adsw-perception:${IMAGE_TAG}"
+docker pull "${IMAGE_NAMESPACE}/adsw-decision:${IMAGE_TAG}"
+docker pull "${IMAGE_NAMESPACE}/adsw-control:${IMAGE_TAG}"
+docker image inspect "${IMAGE_NAMESPACE}/adsw-perception:${IMAGE_TAG}" \
 --format '{{.Os}}/{{.Architecture}}'
 ```
 
@@ -327,9 +331,9 @@ BSP 보드에는 ubuntu-desktop, X11 또는 DISPLAY가 필요하지 않습니다
 
 ```bash
 cd "$HOME/oss/oss_adsw"
-REPO=ghcr.io/oss-test-group/autoware-partition
+IMAGE_TAG=v0.1.0
 MAP_PATH="$HOME/autoware_map/sample-map-planning"
-./partition/run_partitions.sh --repo "$REPO" --map-path "$MAP_PATH" --domain-id 42 --headless
+./partition/run_partitions.sh --image-tag "$IMAGE_TAG" --map-path "$MAP_PATH" --domain-id 42 --headless
 ```
 
 이 명령은 Perception launch에 rviz:=false를 전달합니다. Perception, Decision, Control 노드와 로그 동작은 일반 실행과 동일합니다.
@@ -340,9 +344,9 @@ MAP_PATH="$HOME/autoware_map/sample-map-planning"
 
 ```bash
 cd "$HOME/oss/oss_adsw"
-REPO=ghcr.io/oss-test-group/autoware-partition
-docker pull "${REPO}:adsw-perception"
-./partition/run_remote_rviz.sh --repo "$REPO" --domain-id 42
+IMAGE_TAG=v0.1.0
+docker pull "ghcr.io/oss-test-group/adsw-perception:${IMAGE_TAG}"
+./partition/run_remote_rviz.sh --image-tag "$IMAGE_TAG" --domain-id 42
 ```
 
 RViz가 실행되면 BSP 보드에서 발행하는 map, TF, route, trajectory와 vehicle 상태가 표시됩니다. 외부 PC의 RViz에서 지정한 initial pose와 goal도 같은 ROS domain을 통해 BSP 보드로 전달됩니다.
@@ -392,21 +396,23 @@ sudo reboot
 ```bash
 echo "$DISPLAY"
 cd "$HOME/oss/oss_adsw"
-REPO=ghcr.io/oss-test-group/autoware-partition
+IMAGE_TAG=v0.1.0
 MAP_PATH="$HOME/autoware_map/sample-map-planning"
 ./partition/run_partitions.sh \
---repo "$REPO" \
+--image-tag "$IMAGE_TAG" \
 --map-path "$MAP_PATH" \
 --domain-id 42
 ```
 
-직접 빌드한 이미지도 같은 `ghcr.io/oss-test-group/autoware-partition` repository 이름을 사용합니다. 스크립트는 Perception → 10초 → Decision → 10초 → Control 순서로 실행하고 세 로그를 현재 터미널에 출력합니다.
+정식 배포 이미지는 컴포넌트별 GHCR repository와 동일한 릴리즈 또는 스냅샷 태그를
+사용합니다. 스크립트는 Perception → 10초 → Decision → 10초 → Control 순서로
+실행하고 세 로그를 현재 터미널에 출력합니다.
 
 BSP 보드에서 초기화가 느리면 파티션 시작 간격을 늘릴 수 있습니다.
 
 ```bash
 ./partition/run_partitions.sh \
---repo "$REPO" \
+--image-tag "$IMAGE_TAG" \
 --map-path "$MAP_PATH" \
 --domain-id 42 \
 --delay 20
@@ -435,15 +441,15 @@ docker ps --filter 'name=adsw-'
 ```bash
 # Terminal 1 - Perception
 ROS_DOMAIN_ID=42 ./partition/partition_run.sh --rm --no-nvidia \
---repo "$REPO" --tag adsw-perception --map-path "$MAP_PATH" \
+--repo ghcr.io/oss-test-group/adsw-perception --tag "$IMAGE_TAG" --map-path "$MAP_PATH" \
 /autoware/start_script/adsw-perception.sh
 # Terminal 2 - Decision
 ROS_DOMAIN_ID=42 ./partition/partition_run.sh --rm --no-nvidia \
---repo "$REPO" --tag adsw-decision --map-path "$MAP_PATH" \
+--repo ghcr.io/oss-test-group/adsw-decision --tag "$IMAGE_TAG" --map-path "$MAP_PATH" \
 /autoware/start_script/adsw-decision.sh
 # Terminal 3 - Control
 ROS_DOMAIN_ID=42 ./partition/partition_run.sh --rm --no-nvidia \
---repo "$REPO" --tag adsw-control --map-path "$MAP_PATH" \
+--repo ghcr.io/oss-test-group/adsw-control --tag "$IMAGE_TAG" --map-path "$MAP_PATH" \
 /autoware/start_script/adsw-control.sh
 ```
 
@@ -577,7 +583,10 @@ pull access denied
 insufficient_scope: authorization failed
 ```
 
-REPO와 태그를 확인합니다. 공개 배포 repository는 `ghcr.io/oss-test-group/autoware-partition`입니다. 직접 빌드 중 `cuda-latest`를 찾는 오류가 발생하면 CUDA 대상이 선택된 것이므로 `--no-cuda`를 사용합니다.
+이미지 경로와 태그를 확인합니다. 공개 배포 repository는
+`ghcr.io/oss-test-group/adsw-perception`, `adsw-decision`, `adsw-control`입니다.
+직접 빌드 중 `cuda-latest`를 찾는 오류가 발생하면 CUDA 대상이 선택된 것이므로
+`--no-cuda`를 사용합니다.
 
 ### 8.5 Route 또는 Auto 버튼 비활성화
 
@@ -630,9 +639,9 @@ BSP 보드의 컨테이너가 정상인데 외부 PC RViz에서 map이나 TF가 
 # 각 장비에서 LAN 인터페이스 확인
 ip -br address
 # BSP 보드 예시
-./partition/run_partitions.sh --repo "$REPO" --map-path "$MAP_PATH" --domain-id 42 --headless --network-interface eth0
+./partition/run_partitions.sh --image-tag "$IMAGE_TAG" --map-path "$MAP_PATH" --domain-id 42 --headless --network-interface eth0
 # 외부 PC 예시
-./partition/run_remote_rviz.sh --repo "$REPO" --domain-id 42 --network-interface enp3s0
+./partition/run_remote_rviz.sh --image-tag "$IMAGE_TAG" --domain-id 42 --network-interface enp3s0
 ```
 
 #### 8.8.2 UDP multicast 확인
@@ -643,7 +652,7 @@ ip -br address
 # BSP 보드
 docker exec -it adsw-perception-42 bash -lc 'source /opt/ros/humble/setup.bash && ros2 multicast receive'
 # 외부 PC
-docker run --rm --net=host "${REPO}:adsw-perception" bash -lc 'source /opt/ros/humble/setup.bash && ros2 multicast send'
+docker run --rm --net=host "ghcr.io/oss-test-group/adsw-perception:${IMAGE_TAG}" bash -lc 'source /opt/ros/humble/setup.bash && ros2 multicast send'
 ```
 
 BSP 보드에 Hello World!가 출력되면 UDP multicast가 전달된 것입니다. 실패하면 두 장비의 방화벽, 스위치/VLAN, Wi-Fi AP의 client isolation과 선택한 네트워크 인터페이스를 확인합니다.

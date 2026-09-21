@@ -6,6 +6,8 @@ SCRIPT_DIR=$(readlink -f "$(dirname "$0")")
 WORKSPACE_ROOT=$(readlink -f "$SCRIPT_DIR/..")
 
 REPO="${PARTITION_IMAGE_REPO:-ghcr.io/oss-test-group/autoware-partition}"
+IMAGE_NAMESPACE="${PARTITION_IMAGE_NAMESPACE:-ghcr.io/oss-test-group}"
+IMAGE_TAG="${PARTITION_IMAGE_TAG:-}"
 MAP_PATH="$HOME/autoware_map/sample-map-planning"
 ROS_DOMAIN="${ROS_DOMAIN_ID:-42}"
 START_DELAY=10
@@ -20,6 +22,8 @@ Usage: partition/run_partitions.sh [OPTIONS]
 
 Options:
   --repo <repo>          Docker image repo (default: ghcr.io/oss-test-group/autoware-partition)
+  --image-namespace <ns> Component image namespace (default: ghcr.io/oss-test-group)
+  --image-tag <tag>      Shared snapshot or release tag for all three component images
   --map-path <path>      Host map path (default: ~/autoware_map/sample-map-planning)
   --domain-id <id>       ROS_DOMAIN_ID (default: 42)
   --delay <sec>          Delay between partitions (default: 10)
@@ -36,6 +40,14 @@ while [ "${1:-}" != "" ]; do
     case "$1" in
     --repo)
         REPO="$2"
+        shift
+        ;;
+    --image-namespace)
+        IMAGE_NAMESPACE="$2"
+        shift
+        ;;
+    --image-tag)
+        IMAGE_TAG="$2"
         shift
         ;;
     --map-path)
@@ -151,22 +163,33 @@ remove_stale_container() {
 start_partition() {
     local label="$1"
     local name="$2"
-    local tag="$3"
+    local component="$3"
     local script="$4"
     local log_file="$5"
+    local image
+
+    if [ -n "$IMAGE_TAG" ]; then
+        image="${IMAGE_NAMESPACE}/${component}:${IMAGE_TAG}"
+    else
+        image="${REPO}:${component}"
+    fi
 
     remove_stale_container "$name"
 
-    echo "Starting $label: $REPO:${tag}"
+    echo "Starting $label: $image"
     docker run -d \
         --name "$name" \
         "${COMMON_ARGS[@]}" \
         "${X_ARGS[@]}" \
-        "$REPO:${tag}" \
+        "$image" \
         bash -lc "mkdir -p /workspace/log && $script > /workspace/log/$log_file 2>&1" >/dev/null
 }
 
-echo "Repo: $REPO"
+if [ -n "$IMAGE_TAG" ]; then
+    echo "Images: ${IMAGE_NAMESPACE}/adsw-*:${IMAGE_TAG}"
+else
+    echo "Images: ${REPO}:adsw-* (deprecated compatibility layout)"
+fi
 echo "Map: $MAP_PATH"
 echo "ROS_DOMAIN_ID: $ROS_DOMAIN"
 echo "Delay: ${START_DELAY}s"

@@ -3,6 +3,8 @@
 set -euo pipefail
 
 REPO="${PARTITION_IMAGE_REPO:-ghcr.io/oss-test-group/autoware-partition}"
+IMAGE_NAMESPACE="${PARTITION_IMAGE_NAMESPACE:-ghcr.io/oss-test-group}"
+IMAGE_TAG="${PARTITION_IMAGE_TAG:-}"
 ROS_DOMAIN="${ROS_DOMAIN_ID:-42}"
 NETWORK_INTERFACE=""
 RVIZ_CONFIG="/opt/autoware/share/obigo_launch/rviz/autoware.rviz"
@@ -16,6 +18,8 @@ Run only RViz2 on a desktop PC and connect to headless Autoware partitions.
 
 Options:
   --repo <repo>             Docker image repo (default: ghcr.io/oss-test-group/autoware-partition)
+  --image-namespace <ns>    Component image namespace (default: ghcr.io/oss-test-group)
+  --image-tag <tag>         Perception snapshot or release tag
   --domain-id <id>          ROS_DOMAIN_ID (default: 42)
   --network-interface <if>  Cyclone DDS network interface (e.g., enp3s0)
   --rviz-config <path>      RViz config path inside the image
@@ -27,6 +31,14 @@ while [ "${1:-}" != "" ]; do
     case "$1" in
     --repo)
         REPO="$2"
+        shift
+        ;;
+    --image-namespace)
+        IMAGE_NAMESPACE="$2"
+        shift
+        ;;
+    --image-tag)
+        IMAGE_TAG="$2"
         shift
         ;;
     --domain-id)
@@ -105,7 +117,13 @@ if command -v xhost >/dev/null 2>&1; then
     xhost "+si:localuser:$(id -un)" >/dev/null || true
 fi
 
-echo "Repo: $REPO"
+if [ -n "$IMAGE_TAG" ]; then
+    IMAGE="${IMAGE_NAMESPACE}/adsw-perception:${IMAGE_TAG}"
+else
+    IMAGE="${REPO}:adsw-perception"
+fi
+
+echo "Image: $IMAGE"
 echo "ROS_DOMAIN_ID: $ROS_DOMAIN"
 echo "DDS interface: ${NETWORK_INTERFACE:-auto}"
 echo "RViz config: $RVIZ_CONFIG"
@@ -123,5 +141,5 @@ docker run -it --rm \
     "${DDS_ARGS[@]}" \
     "${X_ARGS[@]}" \
     "${DEVICE_ARGS[@]}" \
-    "${REPO}:adsw-perception" \
+    "$IMAGE" \
     rviz2 -d "$RVIZ_CONFIG"

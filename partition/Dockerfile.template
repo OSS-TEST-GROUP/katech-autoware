@@ -199,7 +199,15 @@ CMD ["/bin/bash"]
 FROM $AUTOWARE_BASE_IMAGE AS %PARTITION_NAME%
 #ARG LIB_DIR
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-LABEL org.opencontainers.image.source="https://github.com/OSS-TEST-GROUP/katech-autoware"
+ARG OCI_REVISION=""
+ARG OCI_REF_NAME=""
+ARG OCI_CREATED=""
+ARG OCI_VERSION=""
+LABEL org.opencontainers.image.source="https://github.com/OSS-TEST-GROUP/katech-autoware" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.ref.name="${OCI_REF_NAME}" \
+      org.opencontainers.image.created="${OCI_CREATED}" \
+      org.opencontainers.image.version="${OCI_VERSION}"
 ARG ROS_DISTRO
 ARG SETUP_ARGS
 ARG TARGETPLATFORM
@@ -235,7 +243,15 @@ CMD ["/bin/bash"]
 FROM $AUTOWARE_BASE_CUDA_IMAGE AS %PARTITION_NAME%-cuda
 #ARG LIB_DIR
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-LABEL org.opencontainers.image.source="https://github.com/OSS-TEST-GROUP/katech-autoware"
+ARG OCI_REVISION=""
+ARG OCI_REF_NAME=""
+ARG OCI_CREATED=""
+ARG OCI_VERSION=""
+LABEL org.opencontainers.image.source="https://github.com/OSS-TEST-GROUP/katech-autoware" \
+      org.opencontainers.image.revision="${OCI_REVISION}" \
+      org.opencontainers.image.ref.name="${OCI_REF_NAME}" \
+      org.opencontainers.image.created="${OCI_CREATED}" \
+      org.opencontainers.image.version="${OCI_VERSION}"
 ARG ROS_DISTRO
 ARG TARGETPLATFORM
 
