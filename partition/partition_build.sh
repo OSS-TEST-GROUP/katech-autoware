@@ -187,7 +187,7 @@ set_arch_lib_dir() {
 set_ssh_options() {
     if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
         ssh_allow_option=("--allow=ssh")
-        ssh_set_option=("--set *.ssh=default")
+        ssh_set_option=("--set" "*.ssh=default")
     else
         ssh_allow_option=()
         ssh_set_option=()
@@ -376,28 +376,28 @@ build_base_images() {
     base_option+=("$output_type")
     base_option+=("--progress=plain")
     base_option+=("-f" "$SCRIPT_DIR/docker-bake-base.hcl")
-    base_option+=("--set *.context=$WORKSPACE_ROOT")
+    base_option+=("--set" "*.context=$WORKSPACE_ROOT")
     base_option+=("${ssh_set_option[@]}")
     if [ "$native_staging" = "true" ]; then
         base_option+=("--provenance=false")
-        base_option+=("--set *.platform=$platform")
+        base_option+=("--set" "*.platform=$platform")
     elif [ "$output_type" = "--push" ]; then
-        base_option+=("--set *.platform=linux/amd64,linux/arm64")
+        base_option+=("--set" "*.platform=linux/amd64,linux/arm64")
     else
-        base_option+=("--set *.platform=$platform")
+        base_option+=("--set" "*.platform=$platform")
     fi
-    base_option+=("--set *.args.ROS_DISTRO=$rosdistro")
-    base_option+=("--set *.args.BASE_IMAGE=$base_image")
-    base_option+=("--set *.args.SETUP_ARGS=$setup_args")
-    base_option+=("--set *.args.LIB_DIR=$lib_dir")
+    base_option+=("--set" "*.args.ROS_DISTRO=$rosdistro")
+    base_option+=("--set" "*.args.BASE_IMAGE=$base_image")
+    base_option+=("--set" "*.args.SETUP_ARGS=$setup_args")
+    base_option+=("--set" "*.args.LIB_DIR=$lib_dir")
     if [ "$native_staging" = "true" ]; then
         release_arch=$(release_platform_arch "$platform")
         release_base_repo="${image_namespace}/adsw-build-base"
         release_base_tag="${snapshot_tag}-${release_arch}"
-        base_option+=("--set base.tags=${release_base_repo}:${release_base_tag}")
+        base_option+=("--set" "base.tags=${release_base_repo}:${release_base_tag}")
     else
-        base_option+=("--set base.tags=$repo:latest")
-        base_option+=("--set base-cuda.tags=$repo:cuda-latest")
+        base_option+=("--set" "base.tags=$repo:latest")
+        base_option+=("--set" "base-cuda.tags=$repo:cuda-latest")
     fi
 
     base_targets=("base")
@@ -450,27 +450,27 @@ build_images() {
     build_option+=("--progress=plain")
     build_option+=("-f" "$SCRIPT_DIR/docker-bake.hcl")
     #build_option+=("-f $SCRIPT_DIR/docker-bake-cuda.hcl")
-    build_option+=("--set *.context=$WORKSPACE_ROOT")
+    build_option+=("--set" "*.context=$WORKSPACE_ROOT")
     build_option+=("${ssh_set_option[@]}")
-    #build_option+=("--set *.platform=$platform")
-    #build_option+=("--set *.platforms=linux/amd64,linux/arm64")
-    build_option+=("--set *.args.ROS_DISTRO=$rosdistro")
-    build_option+=("--set *.args.BASE_IMAGE=$base_image")
-    build_option+=("--set *.args.AUTOWARE_BASE_IMAGE=$autoware_base_image")
-    build_option+=("--set *.args.AUTOWARE_BASE_CUDA_IMAGE=$autoware_base_cuda_image")
-    build_option+=("--set *.args.SETUP_ARGS=$setup_args")
-    #build_option+=("--set *.args.LIB_DIR=$lib_dir")
-    #build_option+=("--set partition.tags=$repo:${partition_name}-${lib_dir}")
-    build_option+=("--set partition*.tags=${target_repo}:${target_tag}")
-    build_option+=("--set partition*.dockerfile=partition/${partition_name}_Dockerfile")
-    build_option+=("--set partition*.target=${partition_name}${image_name_suffix}")
+    #build_option+=("--set" "*.platform=$platform")
+    #build_option+=("--set" "*.platforms=linux/amd64,linux/arm64")
+    build_option+=("--set" "*.args.ROS_DISTRO=$rosdistro")
+    build_option+=("--set" "*.args.BASE_IMAGE=$base_image")
+    build_option+=("--set" "*.args.AUTOWARE_BASE_IMAGE=$autoware_base_image")
+    build_option+=("--set" "*.args.AUTOWARE_BASE_CUDA_IMAGE=$autoware_base_cuda_image")
+    build_option+=("--set" "*.args.SETUP_ARGS=$setup_args")
+    #build_option+=("--set" "*.args.LIB_DIR=$lib_dir")
+    #build_option+=("--set" "partition.tags=$repo:${partition_name}-${lib_dir}")
+    build_option+=("--set" "partition*.tags=${target_repo}:${target_tag}")
+    build_option+=("--set" "partition*.dockerfile=partition/${partition_name}_Dockerfile")
+    build_option+=("--set" "partition*.target=${partition_name}${image_name_suffix}")
     if [ "$native_staging" = "true" ]; then
         build_option+=("--provenance=false")
-        build_option+=("--set *.platform=$platform")
-        build_option+=("--set *.args.OCI_REVISION=$(git -C "$WORKSPACE_ROOT" rev-parse HEAD)")
-        build_option+=("--set *.args.OCI_REF_NAME=$DEFAULT_BRANCH")
-        build_option+=("--set *.args.OCI_CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
-        build_option+=("--set *.args.OCI_VERSION=$snapshot_tag")
+        build_option+=("--set" "*.platform=$platform")
+        build_option+=("--set" "*.args.OCI_REVISION=$(git -C "$WORKSPACE_ROOT" rev-parse HEAD)")
+        build_option+=("--set" "*.args.OCI_REF_NAME=$DEFAULT_BRANCH")
+        build_option+=("--set" "*.args.OCI_CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+        build_option+=("--set" "*.args.OCI_VERSION=$snapshot_tag")
     fi
 
     set -x
