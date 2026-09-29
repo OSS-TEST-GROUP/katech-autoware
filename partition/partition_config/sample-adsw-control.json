@@ -29,6 +29,8 @@
     "src/universe/autoware.universe/obigo_launch",
     "src/universe/autoware.universe/vehicle",
     "src/universe/autoware.universe/visualization",
-    "src/vehicle"
+    "src/vehicle",
+    "src/sensor_kit/carla_sensor_kit_launch/carla_sensor_kit_description",
+    "src/sensor_component/external/sensor_component_description"
   ]
 }

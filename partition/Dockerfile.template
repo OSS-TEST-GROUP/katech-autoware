@@ -286,7 +286,7 @@ RUN set -e; if [ "$INSTALL_CARLA_PYTHON_API" = "true" ]; then \
       }; \
       curl -fL "$CARLA_PYTHON_API_URL" -o /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
       echo "$CARLA_PYTHON_API_SHA256  /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl" | sha256sum -c -; \
-      python3 -m pip install --no-cache-dir /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
+      python3 -m pip install --no-cache-dir /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl transforms3d; \
       rm -f /tmp/carla-0.9.15-cp310-cp310-linux_x86_64.whl; \
     fi
 

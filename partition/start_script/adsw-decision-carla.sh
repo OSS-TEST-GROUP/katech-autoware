@@ -3,7 +3,7 @@
 set -euo pipefail
 
 AUTOWARE_VEHICLE_MODEL="${AUTOWARE_VEHICLE_MODEL:-sample_vehicle}"
-AUTOWARE_SENSOR_MODEL="${AUTOWARE_SENSOR_MODEL:-awsim_sensor_kit}"
+AUTOWARE_SENSOR_MODEL="${AUTOWARE_SENSOR_MODEL:-carla_sensor_kit}"
 
 args=(
     "map_path:=/autoware_map"

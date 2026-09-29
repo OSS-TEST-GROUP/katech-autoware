@@ -9,7 +9,7 @@ CARLA_TIMEOUT="${CARLA_TIMEOUT:-20}"
 CARLA_SPAWN_POINT="${CARLA_SPAWN_POINT:-None}"
 AUTOWARE_RVIZ="${AUTOWARE_RVIZ:-true}"
 AUTOWARE_VEHICLE_MODEL="${AUTOWARE_VEHICLE_MODEL:-sample_vehicle}"
-AUTOWARE_SENSOR_MODEL="${AUTOWARE_SENSOR_MODEL:-awsim_sensor_kit}"
+AUTOWARE_SENSOR_MODEL="${AUTOWARE_SENSOR_MODEL:-carla_sensor_kit}"
 
 python3 -c 'import carla; assert hasattr(carla, "Client")' || {
     echo "CARLA 0.9.15 Python API is not available in the Perception image." >&2
@@ -54,6 +54,7 @@ bridge_args=(
 
 perception_args=(
     "map_path:=/autoware_map"
+    "data_path:=/autoware_data"
     "vehicle_model:=$AUTOWARE_VEHICLE_MODEL"
     "sensor_model:=$AUTOWARE_SENSOR_MODEL"
     "use_sim_time:=true"
@@ -64,9 +65,12 @@ perception_args=(
     "rviz:=$AUTOWARE_RVIZ"
     "pointcloud_container_name:=pointcloud_container_perception"
     "glog_name:=glog_component_perception"
+    "launch_perception:=true"
 )
 
 ros2 launch autoware_carla_interface autoware_carla_interface.launch.xml \
+    input_initial_pose:=/initialpose3d \
+    output_imu_topic:=/sensing/imu/imu_data \
     "${bridge_args[@]}" &
 child_pids+=("$!")
 

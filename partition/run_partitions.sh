@@ -215,6 +215,7 @@ COMMON_ARGS=(
     -v /etc/localtime:/etc/localtime:ro
     -v "$WORKSPACE_ROOT:/workspace"
     -v "$MAP_PATH:/autoware_map:ro"
+    -v "$HOME/autoware_data/ml_models:/autoware_data:ro"
     -v "$HOST_SOURCE_DIR/fastdds:/fastdds:rw"
     -v "$WORKSPACE_ROOT:/exec"
     -v "$HOST_SOURCE_DIR/ros2:/ros2"
@@ -305,9 +306,9 @@ if [ "$SIMULATOR_MODE" = "carla" ]; then
     PERCEPTION_TAG="adsw-perception-carla-cuda"
     DECISION_TAG="adsw-decision-carla"
     CONTROL_TAG="adsw-control-carla"
-    PERCEPTION_COMMAND="/autoware/start_script/adsw-perception-carla.sh"
-    DECISION_COMMAND="/autoware/start_script/adsw-decision-carla.sh"
-    CONTROL_COMMAND="/autoware/start_script/adsw-control-carla.sh"
+    PERCEPTION_COMMAND="/exec/partition/start_script/adsw-perception-carla.sh"
+    DECISION_COMMAND="/exec/partition/start_script/adsw-decision-carla.sh"
+    CONTROL_COMMAND="/exec/partition/start_script/adsw-control-carla.sh"
     PERCEPTION_GPU=true
     if [ "$HEADLESS" = "true" ]; then
         COMMON_ARGS+=(-e "AUTOWARE_RVIZ=false")
