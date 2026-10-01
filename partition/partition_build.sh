@@ -274,6 +274,8 @@ clone_repositories() {
             "$snapshot_tag" \
             "$platform" \
             "$DEFAULT_BRANCH"
+    elif [ -d "src" ] && [ "${SKIP_SOURCE_UPDATE:-false}" = "true" ]; then
+        echo "Using existing source tree without repository updates."
     elif [ ! -d "src" ]; then
         mkdir -p src
         vcs import src <autoware.repos

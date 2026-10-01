@@ -21,6 +21,8 @@ CARLA_PORT="2000"
 CARLA_MAP="Town01"
 CARLA_TIMEOUT="20"
 CARLA_SPAWN_POINT="None"
+LIDAR_DETECTION_MODEL="${LIDAR_DETECTION_MODEL:-centerpoint}"
+CENTERPOINT_SCORE_THRESHOLD="${CENTERPOINT_SCORE_THRESHOLD:-0.10}"
 MAP_PATH_EXPLICIT=false
 
 print_help() {
@@ -260,6 +262,13 @@ start_partition() {
 
     if [ "$use_gpu" = "true" ]; then
         runtime_args+=(--gpus all)
+    fi
+
+    if [ "$SIMULATOR_MODE" = "carla" ] && [ "$label" = "perception" ]; then
+        runtime_args+=(-e "LIDAR_DETECTION_MODEL=$LIDAR_DETECTION_MODEL")
+        runtime_args+=(-e "CENTERPOINT_SCORE_THRESHOLD=$CENTERPOINT_SCORE_THRESHOLD")
+        runtime_args+=(-v "$WORKSPACE_ROOT/src/universe/autoware.universe/simulator/autoware_carla_interface/launch/autoware_carla_interface.launch.xml:/opt/autoware/share/autoware_carla_interface/autoware_carla_interface.launch.xml:ro")
+        runtime_args+=(-v "$WORKSPACE_ROOT/src/universe/autoware.universe/simulator/autoware_carla_interface/src/autoware_carla_interface/carla_ros.py:/opt/autoware/lib/python3.10/site-packages/autoware_carla_interface/carla_ros.py:ro")
     fi
 
     remove_stale_container "$name"
