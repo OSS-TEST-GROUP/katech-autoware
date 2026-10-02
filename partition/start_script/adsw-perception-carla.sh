@@ -41,9 +41,13 @@ cp "$obigo_host_root/config/perception/object_recognition/detection/lidar_model/
     "$obigo_override_prefix/share/obigo_launch/config/perception/object_recognition/detection/lidar_model/centerpoint_tiny.param.yaml"
 cp "$obigo_host_root/config/perception/object_recognition/detection/object_filter/object_lanelet_filter.param.yaml" \
     "$obigo_override_prefix/share/obigo_launch/config/perception/object_recognition/detection/object_filter/object_lanelet_filter.param.yaml"
+cp "$obigo_host_root/config/perception/traffic_light_arbiter/traffic_light_arbiter.param.yaml" \
+    "$obigo_override_prefix/share/obigo_launch/config/perception/traffic_light_arbiter/traffic_light_arbiter.param.yaml"
 sed -i -E "s/(score_threshold:)[[:space:]]*[0-9.]+/\\1 ${CENTERPOINT_SCORE_THRESHOLD}/" \
     "$obigo_override_prefix/share/obigo_launch/config/perception/object_recognition/detection/lidar_model/centerpoint.param.yaml" \
     "$obigo_override_prefix/share/obigo_launch/config/perception/object_recognition/detection/lidar_model/centerpoint_tiny.param.yaml"
+sed -i -E "s/(external_priority:)[[:space:]]*false/\\1 true/" \
+    "$obigo_override_prefix/share/obigo_launch/config/perception/traffic_light_arbiter/traffic_light_arbiter.param.yaml"
 touch "$obigo_override_prefix/share/ament_index/resource_index/packages/obigo_launch"
 export AMENT_PREFIX_PATH="$obigo_override_prefix:${AMENT_PREFIX_PATH:-}"
 
@@ -120,6 +124,7 @@ ros2 launch autoware_carla_interface autoware_carla_interface.launch.xml \
     output_imu_topic:=/sensing/imu/imu_data \
     output_camera_image_topic:=/sensing/camera/camera6/image_raw \
     output_camera_info_topic:=/sensing/camera/camera6/camera_info \
+    publish_ground_truth_traffic_lights:=true \
     use_traffic_manager:=true \
     "${bridge_args[@]}" &
 child_pids+=("$!")
