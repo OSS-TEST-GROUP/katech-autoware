@@ -229,3 +229,52 @@ ros2 topic info /map/pointcloud_map
 - 소스만 수정하고 이미지를 재빌드하지 않으면 컨테이너에는 이전 classifier/launch 설정이 남습니다.
 - 외부 CARLA client에서 actor 수가 0으로 보이는 현상만으로 인터페이스 실패를 판단하지 않습니다. CARLA interface 로그와 ROS sensor/status topic을 함께 확인합니다.
 - GT 신호등 색상은 시뮬레이션 통합 검증용 임시 경로입니다. 실차 인지 성능을 입증하지 않습니다.
+
+## 10. Autoware Universe와 기존 K-Autoware 대비 변경점
+
+이 절에서는 세 기준선을 구분합니다.
+
+- **상위 Autoware Universe**: 공개 오픈소스 기능과 패키지 구조의 기준선
+- **기존 K-Autoware**: CARLA 통합 전 Perception/Decision/Control 3개 파티션 배포 기준선
+- **현재 K-Autoware CARLA 배포본**: CARLA 0.9.15 SILS를 재현하고 이후 HILS 구성으로 교체할 수 있도록 수정한 기준선
+
+차이는 알고리즘뿐 아니라 저장소 버전, 빌드와 이미지, 실행 구조, 센서 보정, 지도, 런타임 계약을 포함합니다.
+
+### 10.1 기준선별 차이
+
+| 영역 | 상위 Autoware Universe | 기존 K-Autoware | 현재 K-Autoware CARLA 배포본 |
+| --- | --- | --- | --- |
+| 실행 구조 | 통합 workspace와 system launch 중심 | Perception/Decision/Control 3개 컨테이너 | 3개 파티션을 유지하고 같은 ROS domain과 CycloneDDS로 연결. Perception은 GPU 사용 |
+| 소스와 버전 | 패키지별 repository와 release 기준 | 상위 저장소에 Universe와 individual parameters가 중첩 | 상위 저장소와 중첩 repository의 호환 commit SHA를 manifest에 함께 고정 |
+| 빌드와 이미지 | 일반적인 `colcon` build와 Autoware launch | partition 설정과 build script로 컨테이너별 이미지 생성 | CARLA 변경을 이미지에 포함하고 최종 배포에서 개발용 source mount를 사용하지 않음 |
+| 차량과 센서 description | sample sensor kit 등 표준 description 사용 | `obigo_vehicle.xacro`의 고정 include와 파티션별 sensor model 혼재 가능 | sensor model에 맞는 `sensors.xacro`를 동적으로 포함하고 모든 파티션을 `carla_sensor_kit`으로 통일 |
+| CARLA 연결 | simulator bridge와 통합 구성을 사용자가 선택 | CARLA와 vehicle interface 경계가 배포 환경에 따라 달라질 수 있음 | Perception의 `autoware_carla_interface`가 ego와 센서를 생성하고 차량 명령을 변환. 중복 vehicle interface는 기동하지 않음 |
+| 초기 위치와 IMU | 상위 기본 topic과 frame 계약 | CARLA interface와 K launch의 topic 이름이 불일치할 수 있음 | 초기 위치를 `/initialpose3d`, IMU를 `/sensing/imu/imu_data`로 연결하고 changed-frame 호환은 필요한 범위에서만 유지 |
+| LiDAR 보정 | sensor kit calibration과 simulator pose 정합 필요 | `objects.json`의 LiDAR pose가 `x=0`, `z=3.1`로 고정 | `x=-0.36`, `y=0`, `z=1.84`로 정합한 설치 이미지의 corrected `objects.json` 사용 |
+| Town01 신호등 지도 | Lanelet2 regulatory element와 simulator signal 대응을 통합자가 구성 | 테스트용 단일 signal metadata만 존재 | Town01의 36개 신호등 regulatory element를 stable ID로 생성하고 signal actor와 stop line 대응을 배포 지도에 포함 |
+| 신호등 인지 | ROI 검출과 classifier 결과를 planning이 소비 | YOLOX fine detector와 HSV/CNN classifier의 동기와 인식률에 영향받음 | SILS에서만 선택적으로 CARLA 색상 GT를 사용. HILS와 실차에서는 GT를 끄고 센서 기반 인지 사용 |
+| 객체 인지 | 센서 perception 또는 simulator 검증용 dummy 입력 선택 가능 | dummy perception이나 임시 bridge가 실제 인지 경로를 가릴 수 있음 | LiDAR와 카메라 기반 Full Perception 사용. CARLA GT object를 주행 입력으로 사용하지 않음 |
+| 재시작과 운영 | lifecycle은 통합 환경에서 정의 | 부분 재시작 시 actor, TF, topic 또는 vehicle interface 중복 가능 | 구성이 바뀌면 CARLA와 세 파티션을 함께 재시작하고 중복 publisher와 emergency 상태를 기동 시 확인 |
+| HILS 전환 | sensor와 vehicle hardware adapter를 대상 플랫폼에서 통합 | CARLA 경로와 실제 차량 경로의 분리가 불명확할 수 있음 | planning/control ROS 계약은 유지하고 CARLA interface를 실센서 driver와 차량 adapter로 교체. `use_sim_time:=false` 적용 |
+
+### 10.2 SILS와 HILS에서 유지하거나 교체할 항목
+
+| 항목 | SILS K-Autoware | HILS 및 실차 | 조치 |
+| --- | --- | --- | --- |
+| Planning/Control 계약 | 현재 검증된 topic과 message 계약 | 같은 계약 유지 | 유지 |
+| Sensor 입력 | CARLA actor와 `carla_sensor_kit` | 실센서 driver와 실차 calibration | 교체 |
+| Vehicle interface | `autoware_carla_interface` | CAN, Ethernet 또는 SOME/IP adapter | 교체 |
+| 시간 기준 | `use_sim_time:=true` | PTP, GNSS 또는 hardware clock과 `use_sim_time:=false` | 교체 |
+| 신호등 색상 | CARLA GT 선택 가능 또는 카메라 인지 | 카메라 기반 인지 또는 실제 인프라 입력 | GT 비활성화 |
+| 객체 인지 | LiDAR와 카메라 기반 Full Perception | 실센서 기반 Full Perception | 유지 |
+| 안전 검증 | simulator E-stop과 장애물 정지 | watchdog, manual override, command limit, fault injection | 추가 검증 |
+
+## 11. 배포자 핵심 확인 사항
+
+- 상위 저장소와 중첩 Universe 및 individual parameters의 commit 조합을 함께 기록합니다.
+- Perception/Decision/Control 이미지를 같은 release set으로 배포하고 세 파티션 모두 `carla_sensor_kit`을 사용합니다.
+- Perception CARLA launch가 corrected `objects.json`을 사용하며 LiDAR pose가 `x=-0.36`, `y=0`, `z=1.84`인지 확인합니다.
+- Town01 배포 지도에 36개 신호등 regulatory element와 simulator signal 대응이 포함됐는지 확인합니다.
+- CARLA traffic-light GT는 SILS 전용 선택 기능으로만 사용하고 HILS와 실차에서는 비활성화합니다.
+- 차량과 장애물은 CARLA GT가 아니라 실제 sensor pipeline으로 인지하는지 확인합니다.
+- HILS 지원 표기는 실제 장치 driver, 차량 adapter와 안전 acceptance matrix 검증이 끝난 뒤에만 적용합니다.
