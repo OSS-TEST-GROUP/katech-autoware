@@ -3,6 +3,10 @@
 PC/BSP 보드에서 빌드, 실행 및 Planning Simulation을 검증하는 절차는 repo 루트의
 [`README.md`](../README.md)를 기준으로 합니다.
 
+CARLA 0.9.15 Town01 구성은 [CARLA 배포 가이드](../docs/carla-build-guide.md)를,
+map·센서·신호등·주행의 단계별 합격 기준은 [CARLA 검증 매뉴얼](../docs/carla-validation-manual.md)을
+기준으로 합니다.
+
 ## 1. 개요
 
 이 시스템은 Autoware의 기능 컴포넌트를 **Perception**, **Decision**, **Control**

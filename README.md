@@ -302,7 +302,7 @@ ARM64 이미지는 ARM64 BSP 보드에서, AMD64 이미지는 x86_64 PC에서 �
 
 ### 5.3 CARLA + CUDA 이미지 빌드
 
-외부 시험 담당자용 절차는 [CARLA 빌드 및 연동 시험 안내](docs/carla-build-guide.md)를 참고합니다. 전체 이미지 빌드와 CARLA 주행은 아직 검증 전입니다.
+CARLA 배포 절차는 [K-Autoware + CARLA 0.9.15 배포 가이드](docs/carla-build-guide.md), 단계별 합격 기준은 [CARLA 검증 매뉴얼](docs/carla-validation-manual.md)을 참고합니다. Town01에서 3개 파티션 통합 주행과 CARLA 신호등 색상 GT를 이용한 RED 정지·GREEN 재출발까지 검증했습니다. 차량과 보행자 객체 인지는 계속 센서 기반으로 동작합니다.
 
 CARLA 프로파일은 Perception만 CUDA 이미지로 빌드하고 Decision과 Control은 CPU 이미지로 유지합니다. CARLA 0.9.15 Python API는 Ubuntu 22.04/Python 3.10용 amd64 wheel을 SHA-256으로 검증한 뒤 Perception 이미지에만 설치합니다.
 
@@ -489,7 +489,7 @@ CARLA와 일치하는 Lanelet2/pointcloud 맵 경로를 반드시 명시합니�
 ```bash
 cd "$HOME/oss/oss_adsw"
 REPO=ghcr.io/oss-test-group/autoware-partition
-MAP_PATH="$HOME/autoware_map/Town01"
+MAP_PATH="$HOME/autoware_data/maps/Town01"
 
 ./partition/run_partitions.sh \
   --repo "$REPO" \
@@ -509,6 +509,8 @@ CARLA가 다른 PC에서 실행되면 `--carla-host`에 해당 PC의 IP 주소�
 2. `/clock`, `/sensing/lidar/top/pointcloud_before_sync`, `/vehicle/status/velocity_status`가 발행되는지 확인합니다.
 3. dummy perception, simple planning simulator 및 중복 `autoware_raw_vehicle_cmd_converter` 노드가 없는지 확인합니다.
 4. RViz에서 초기 pose, goal, Engage를 설정한 뒤 CARLA의 ego 차량이 움직이는지 확인합니다.
+
+CARLA 모드의 신호등 색상은 현재 시뮬레이션 검증을 위해 CARLA GT를 external traffic-signal 입력으로 사용합니다. 이 설정은 신호등 색상에만 적용되며 객체 인지는 센서 기반입니다. 전체 topic 및 RED/GREEN 판정 절차는 [CARLA 검증 매뉴얼](docs/carla-validation-manual.md)을 따릅니다.
 
 ## 7. Planning Simulation 테스트
 
