@@ -65,15 +65,15 @@ Planning Simulation 시나리오를 기준으로 Autoware 기능을 Perception, 
 
 | Perception Part | Decision Part | Control Part |
 | --- | --- | --- |
-| Perception<br>Sensing<br>Localization<br>Map<br>RViz2 | Planning<br>System | Control<br>Vehicle Interface<br>Simulator<br>AD API |
+| Perception<br>Sensing<br>Localization<br>Map<br>RViz2 | Planning | Control<br>System<br>Vehicle Interface<br>Simulator<br>AD API |
 
 그림 1. KATECH Autoware 파티션 구성
 
 | 파티션 | 주요 역할 | 컨테이너 시작 스크립트 |
 | --- | --- | --- |
 | Perception | Map, Localization, Sensing, Perception, RViz2 | adsw-perception.sh |
-| Decision | Planning, System, route 및 trajectory 생성 | adsw-decision.sh |
-| Control | Control, Vehicle, Simulator, AD API | adsw-control.sh |
+| Decision | Planning, route 및 trajectory 생성 | adsw-decision.sh |
+| Control | Control, System, Vehicle, Simulator, AD API | adsw-control.sh |
 
 표 2. 파티션별 역할
 
@@ -132,6 +132,13 @@ partition_build.sh는 빌드 시 BASE_IMAGE, AUTOWARE_BASE_IMAGE와 target을 �
 ### 3.4 파티션별 런처와 통신
 
 기존 autoware_launch 하나를 모든 컨테이너에서 실행하지 않고, obigo_launch의 파티션별 launch를 시작 스크립트에서 호출합니다.
+
+System은 Control에서 한 번 실행합니다. `sample_adsw_control_run.launch.xml`은
+`launch_system=true`, `sample_adsw_decision_run.launch.xml`은 `launch_system=false`를
+전달합니다. Control은 Planning Simulation에서 System Monitor를 끄고
+시뮬레이션용 dummy 진단을 켭니다. 이 저장소의 Decision 이미지는 ROS 2 Planning
+구성으로 유지하며, Adaptive AUTOSAR 기반 `decision-ap` 이미지로 대체해 실행하는
+구성은 별도 프로젝트에서 관리합니다.
 
 | 순서 | 파티션 | Launch | 기본 대기 |
 | --- | --- | --- | --- |
@@ -206,6 +213,22 @@ type: git
 url: https://github.com/OSS-TEST-GROUP/katech-autoware-universe.git
 version: main
 ```
+
+`git lfs pull`은 상위 저장소의 LFS 파일만 받는다. `katech-autoware-universe`를
+비롯한 별도 소스 저장소는 `autoware.repos`에 따라 `src/` 아래로 가져온다.
+직접 준비하려면 다음 명령을 실행한다. `vcs import` 전에 `src/`가 있어야 한다.
+
+```bash
+mkdir -p src
+vcs import src < autoware.repos
+```
+
+Universe 소스 경로는 `src/universe/autoware.universe/`다. `partition_build.sh`는
+`src/`가 없으면 위 작업을 자동으로 수행하고, 이미 있으면 저장소를 갱신한다.
+따라서 로컬 Universe 변경을 이미지에 넣으려면 해당 저장소의 변경을 먼저
+원격에 반영하거나 빌드 시 소스 갱신 동작을 별도로 관리해야 한다.
+정식 릴리스 빌드는 `release/autoware-release.repos`에 기록된 Universe 커밋을
+사용하므로, Universe 변경을 커밋·push한 뒤 이 파일의 SHA도 갱신해야 한다.
 
 ### 4.3 맵 데이터 준비
 

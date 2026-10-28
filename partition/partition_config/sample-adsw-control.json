@@ -21,12 +21,14 @@
     "tier4_autoware_api_launch",
     "tier4_control_launch",
     "tier4_simulator_launch",
+    "tier4_system_launch",
     "tier4_vehicle_launch"
   ],
   "folders": [
     "src/param",
     "src/universe/autoware.universe/control",
     "src/universe/autoware.universe/obigo_launch",
+    "src/universe/autoware.universe/system",
     "src/universe/autoware.universe/vehicle",
     "src/universe/autoware.universe/visualization",
     "src/vehicle"

@@ -74,7 +74,7 @@ repositories:
   universe/autoware.universe:
     type: git
     url: https://github.com/OSS-TEST-GROUP/katech-autoware-universe.git
-    version: 7d4cf908b2c5113164e9e5a311071ed3c4aeb693
+    version: 54d58573422ccf8139bd1a09a36eea96f905b8bc
   universe/external/eagleye:
     type: git
     url: https://github.com/MapIV/eagleye.git
