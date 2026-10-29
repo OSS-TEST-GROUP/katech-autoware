@@ -373,7 +373,13 @@ build_base_images() {
     echo "Image name suffix: $image_name_suffix"
 
     base_option=()
-    base_option+=("$output_type")
+    # Load the native base locally so an existing immutable staging tag can be
+    # checked against the exact image config before attempting another push.
+    if [ "$native_staging" = "true" ]; then
+        base_option+=("--load")
+    else
+        base_option+=("$output_type")
+    fi
     base_option+=("--progress=plain")
     base_option+=("-f" "$SCRIPT_DIR/docker-bake-base.hcl")
     base_option+=("--set" "*.context=$WORKSPACE_ROOT")
@@ -408,6 +414,22 @@ build_base_images() {
     set -x
     docker buildx bake "${ssh_allow_option[@]}" "${base_option[@]}" "${base_targets[@]}"
     set +x
+
+    if [ "$native_staging" = "true" ]; then
+        local base_ref="${release_base_repo}:${release_base_tag}"
+        local local_config remote_manifest remote_config
+        local_config=$(docker image inspect --format '{{.Id}}' "$base_ref")
+        if remote_manifest=$(docker buildx imagetools inspect "$base_ref" --raw 2>/dev/null); then
+            remote_config=$(jq -er '.config.digest' <<<"$remote_manifest")
+            if [ "$local_config" != "$remote_config" ]; then
+                echo "ERROR: immutable base tag $base_ref already has a different image config." >&2
+                exit 1
+            fi
+            echo "Verified existing base image $base_ref ($local_config)"
+        else
+            docker push "$base_ref"
+        fi
+    fi
 }
 
 # Build images

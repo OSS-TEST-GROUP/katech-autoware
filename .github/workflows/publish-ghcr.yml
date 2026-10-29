@@ -10,7 +10,6 @@ on:
       release_tag:
         description: Existing annotated Git release tag on the same commit
         required: true
-        default: v0.1.0
         type: string
 
 permissions:
