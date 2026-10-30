@@ -4,6 +4,7 @@
     "autoware_cuda_utils",
     "autoware_dummy_perception_publisher",
     "autoware_image_transport_decompressor",
+    "autoware_korean_traffic_light_models",
     "autoware_launch",
     "autoware_map_height_fitter",
     "autoware_pcl_extensions",

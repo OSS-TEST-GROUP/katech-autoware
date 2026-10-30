@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-30",
+  "branch": "feature/korean-perception-20261030",
+  "status": "source_candidate_not_driving_qualified",
+  "baseline": {
+    "top": "5c72f096c2c7d1dfc9c01cc3297899e2f6aec05e",
+    "universe": "54d58573422ccf8139bd1a09a36eea96f905b8bc"
+  },
+  "checks": {
+    "python_unit_tests_passed": 14,
+    "pinned_model_files_sha256_verified": 4,
+    "candidate_c_cpu_onnx_batches": [1, 6],
+    "synthetic_cases_per_classifier": 2,
+    "seven_roi_batching_each_classifier": true,
+    "ros_message_smoke": {
+      "passed": true,
+      "backend": "fake deterministic classifier; ROS message handling only",
+      "environment": "existing local Humble perception image, network disabled, no GPU or vehicle",
+      "checks": ["exact image ROI stamp matching", "green plus left-arrow mapping", "duplicate stamp rejection", "timeout UNKNOWN", "one-shot timeout"]
+    },
+    "new_python_ros_package_colcon_build": true,
+    "installed_models_cli": true,
+    "default_disabled_launch": true,
+    "release_tagging_tests": true,
+    "mock_ghcr_publish_tests": true,
+    "python_syntax_and_package_xml": true
+  },
+  "not_verified": [
+    "Full perception image build on this new main-derived branch",
+    "New native detector CPU-preprocess option compile and continuous pipeline replay",
+    "CenterPoint full package rebuild and real sensor regression on this branch",
+    "Target-GPU TensorRT regeneration and numerical/latency qualification",
+    "ARM64 or Jetson build/runtime",
+    "HIL or real-vehicle driving",
+    "Production output switch and multi-camera deployment"
+  ],
+  "excluded": ["SILS runtime", "CARLA bridge", "C-Track assets", "GT localization", "training photos", "training labels", "TensorRT engines", "container tarballs"],
+  "production_defaults_unchanged": true,
+  "main_merge_performed": false,
+  "new_accuracy_claim": false
+}

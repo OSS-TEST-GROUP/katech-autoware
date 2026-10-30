@@ -40,4 +40,13 @@ expect_failure release_validate_semver_tag v1.2
 
 expect_success release_validate_lock_manifest "$WORKSPACE_ROOT/release/autoware-release.repos"
 
+# Ubuntu's older mawk does not support interval expressions such as {40}.
+# Keep the SHA guard strict without depending on that extension.
+manifest_fixture=$(mktemp)
+trap 'rm -f "$manifest_fixture"' EXIT
+for invalid_sha in main 123456789012345678901234567890123456789 12345678901234567890123456789012345678901 g123456789012345678901234567890123456789; do
+    printf 'repositories:\n  test/repo:\n    type: git\n    version: %s\n' "$invalid_sha" > "$manifest_fixture"
+    expect_failure release_validate_lock_manifest "$manifest_fixture"
+done
+
 echo "release tagging tests: PASS"

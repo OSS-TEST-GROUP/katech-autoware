@@ -75,7 +75,7 @@ release_validate_lock_manifest() {
 
     total_versions=$(awk '/^    version: / { count++ } END { print count + 0 }' "$manifest")
     valid_versions=$(release_lock_entries "$manifest" |
-        awk '$2 ~ /^[0-9a-f]{40}$/ { count++ } END { print count + 0 }')
+        awk 'length($2) == 40 && $2 ~ /^[0-9a-f]+$/ { count++ } END { print count + 0 }')
 
     if [ "$total_versions" -eq 0 ] || [ "$total_versions" -ne "$valid_versions" ]; then
         release_die "every version in $manifest must be a full 40-character Git commit SHA"
