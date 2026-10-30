@@ -2,6 +2,10 @@
 
 > Version 1.5 | 2026.07.31
 
+이 브랜치의 선택형 한국 신호등 인지 추가 사항은
+[한국 신호등 인지 소스 후보](docs/korean-perception-candidate.md)를 참고하십시오.
+아래 기본 No-CUDA 배포 기준은 유지되며, 새 GPU 인지는 HIL/실차 검증 완료본이 아닙니다.
+
 릴리즈 태그와 컨테이너 이미지 발행 절차는
 [KATECH 태깅 및 릴리즈 규칙](docs/release-tagging.md)을 따릅니다.
 
