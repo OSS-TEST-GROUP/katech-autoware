@@ -1,0 +1,80 @@
+--- a/src/universe/autoware.universe/perception/autoware_korean_traffic_light_models/package.xml
++++ b/src/universe/autoware.universe/perception/autoware_korean_traffic_light_models/package.xml
+@@ -5,7 +5,7 @@
+   <description>Opt-in Korean YOLOX-S and MobileNetV2 candidate model integration</description>
+   <maintainer email="songj@katech.re.kr">JunSongKatech</maintainer>
+   <license>Apache-2.0</license>
+-  <buildtool_depend>ament_python</buildtool_depend>
++  <buildtool_depend>python3-setuptools</buildtool_depend>
+   <exec_depend>ament_index_python</exec_depend>
+   <exec_depend>launch_ros</exec_depend>
+   <exec_depend>rclpy</exec_depend>
+--- a/src/universe/autoware.universe/launch/perception_simulator_launch/package.xml
++++ b/src/universe/autoware.universe/launch/perception_simulator_launch/package.xml
+@@ -14,7 +14,7 @@
+   <buildtool_depend>ament_cmake_auto</buildtool_depend>
+   <buildtool_depend>autoware_cmake</buildtool_depend>
+ 
+-  <exec_depend>dummy_perception_publisher</exec_depend>
++  <exec_depend>autoware_dummy_perception_publisher</exec_depend>
+ 
+   <test_depend>ament_lint_auto</test_depend>
+   <test_depend>autoware_lint_common</test_depend>
+--- a/src/universe/autoware.universe/launch/perception_simulator_launch/launch/simulator.launch.xml
++++ b/src/universe/autoware.universe/launch/perception_simulator_launch/launch/simulator.launch.xml
+@@ -47,7 +47,7 @@
+ 
+     <!-- Dummy Perception -->
+     <group if="$(var launch_dummy_perception)">
+-      <include file="$(find-pkg-share dummy_perception_publisher)/launch/dummy_perception_publisher.launch.xml">
++      <include file="$(find-pkg-share autoware_dummy_perception_publisher)/launch/dummy_perception_publisher.launch.xml">
+         <arg name="real" value="$(var perception/enable_detection_failure)"/>
+         <arg name="use_object_recognition" value="$(var perception/enable_object_recognition)"/>
+         <arg name="use_base_link_z" value="$(var perception/use_base_link_z)"/>
+@@ -108,7 +108,7 @@
+       <!-- publish empty objects instead of object recognition module -->
+       <group unless="$(var perception/enable_object_recognition)">
+         <push-ros-namespace namespace="object_recognition"/>
+-        <node pkg="dummy_perception_publisher" exec="empty_objects_publisher" name="empty_objects_publisher" output="screen">
++        <node pkg="autoware_dummy_perception_publisher" exec="empty_objects_publisher" name="empty_objects_publisher" output="screen">
+           <remap from="~/output/objects" to="/perception/object_recognition/objects"/>
+         </node>
+       </group>
+--- a/src/universe/autoware.universe/perception/autoware_tensorrt_yolox/CMakeLists.txt
++++ b/src/universe/autoware.universe/perception/autoware_tensorrt_yolox/CMakeLists.txt
+@@ -113,6 +113,12 @@
+     src/preprocess.cu
+   )
+ 
++  install(TARGETS ${PROJECT_NAME}_gpu_preprocess
++    LIBRARY DESTINATION lib
++    ARCHIVE DESTINATION lib
++    RUNTIME DESTINATION bin
++  )
++
+   target_include_directories(${PROJECT_NAME}_gpu_preprocess PUBLIC
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+     $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+--- a/src/universe/external/trt_batched_nms/src/nms/batched_nms_kernel.cpp
++++ b/src/universe/external/trt_batched_nms/src/nms/batched_nms_kernel.cpp
+@@ -12,6 +12,7 @@
+   void * nmsedLabels, void * nmsedIndex, void * workspace, bool isNormalized, bool confSigmoid,
+   bool clipBoxes, bool rotated)
+ {
++  if (rotated) return STATUS_NOT_SUPPORTED;
+   const int topKVal = topK < 0 ? numPredsPerClass : topK;
+   const int keepTopKVal = keepTopK < 0 ? numPredsPerClass : keepTopK;
+   // locCount = batch_size * number_boxes_per_sample * 4
+@@ -101,10 +102,8 @@
+   bool flipXY = false;
+   // NMS
+   if (rotated) {
+-    status = allClassRotatedNMS(
+-      stream, N, numClasses, numPredsPerClass, topKVal, iouThreshold, shareLocation, isNormalized,
+-      DataType::kFLOAT, DataType::kFLOAT, bboxData, scores, indices, postNMSScores, postNMSIndices,
+-      flipXY);
++    // This source distribution does not implement rotated NMS.
++    return STATUS_NOT_SUPPORTED;
+   } else {
+     status = allClassNMS(
+       stream, N, numClasses, numPredsPerClass, topKVal, iouThreshold, shareLocation, isNormalized,

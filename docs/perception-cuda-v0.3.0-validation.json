@@ -1,0 +1,246 @@
+{
+  "date": "2026-11-03",
+  "status": "locally_built_scoped_checks_passed_registry_auth_pending",
+  "top_source_commit": "d915aed53ff4d7be880ae32b68100840ef5da0c6",
+  "input_sha256": "548bf934c555bf1c25986707593873a9bda43eaaab389d0f63e0fba6890ed4ab",
+  "recipe_tests_passed": 17,
+  "reports": {
+    "verify-amd64.json": {
+      "checked_at": 1793715729.8695319,
+      "tag": "katech-perception-local:v0.3.0-candidate-amd64-cuda",
+      "image_id": "sha256:4d5b5a9a334b8666be3c1c822cf68184c7181ab744b7e657020826df83bfb9a0",
+      "architecture": "amd64",
+      "returncode": 0,
+      "gpu_inference_tested": false,
+      "target_board_runtime_validated": false,
+      "registry_push": false,
+      "result": {
+        "models_verified": 4,
+        "gpu_libraries_verified": [
+          "libautoware_tensorrt_common.so",
+          "libautoware_tensorrt_yolox.so",
+          "libautoware_tensorrt_yolox_gpu_preprocess.so",
+          "libautoware_lidar_centerpoint_cuda_lib.so",
+          "libtrt_batched_nms_plugin.so"
+        ],
+        "onnxruntime": "1.20.1",
+        "numpy": "1.26.4",
+        "pillow": "10.4.0",
+        "cpu_synthetic_inference": [
+          {
+            "file": "korean_tl_yolox_s_pilot_batch_1.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                1,
+                3,
+                416,
+                416
+              ]
+            },
+            "output_shapes": [
+              [
+                1,
+                3549,
+                8
+              ]
+            ]
+          },
+          {
+            "file": "korean_tl_yolox_s_pilot_batch_6.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                6,
+                3,
+                416,
+                416
+              ]
+            },
+            "output_shapes": [
+              [
+                6,
+                3549,
+                8
+              ]
+            ]
+          },
+          {
+            "file": "candidate_c_batch_1.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                1,
+                3,
+                20,
+                70
+              ]
+            },
+            "output_shapes": [
+              [
+                1,
+                6
+              ]
+            ]
+          },
+          {
+            "file": "candidate_c_batch_6.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                6,
+                3,
+                20,
+                70
+              ]
+            },
+            "output_shapes": [
+              [
+                6,
+                6
+              ]
+            ]
+          }
+        ],
+        "gpu_driver_and_library_load_checked": true,
+        "tensorrt_inference_checked": false
+      }
+    },
+    "verify-arm64.json": {
+      "checked_at": 1793715969.1143126,
+      "tag": "katech-perception-local:v0.3.0-candidate-arm64-cuda",
+      "image_id": "sha256:9f5cff1bc42da05b59805a9167ec3d7ae75b7dc13168ae7294db792ce66bd1dd",
+      "architecture": "arm64",
+      "returncode": 0,
+      "gpu_inference_tested": false,
+      "target_board_runtime_validated": false,
+      "registry_push": false,
+      "emulated": true,
+      "result": {
+        "models_verified": 4,
+        "gpu_libraries_verified": [
+          "libautoware_tensorrt_common.so",
+          "libautoware_tensorrt_yolox.so",
+          "libautoware_tensorrt_yolox_gpu_preprocess.so",
+          "libautoware_lidar_centerpoint_cuda_lib.so",
+          "libtrt_batched_nms_plugin.so"
+        ],
+        "onnxruntime": "1.20.1",
+        "numpy": "1.26.4",
+        "pillow": "10.4.0",
+        "cpu_synthetic_inference": [
+          {
+            "file": "korean_tl_yolox_s_pilot_batch_1.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                1,
+                3,
+                416,
+                416
+              ]
+            },
+            "output_shapes": [
+              [
+                1,
+                3549,
+                8
+              ]
+            ]
+          },
+          {
+            "file": "korean_tl_yolox_s_pilot_batch_6.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                6,
+                3,
+                416,
+                416
+              ]
+            },
+            "output_shapes": [
+              [
+                6,
+                3549,
+                8
+              ]
+            ]
+          },
+          {
+            "file": "candidate_c_batch_1.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                1,
+                3,
+                20,
+                70
+              ]
+            },
+            "output_shapes": [
+              [
+                1,
+                6
+              ]
+            ]
+          },
+          {
+            "file": "candidate_c_batch_6.onnx",
+            "provider": "CPUExecutionProvider",
+            "input_shapes": {
+              "images": [
+                6,
+                3,
+                20,
+                70
+              ]
+            },
+            "output_shapes": [
+              [
+                6,
+                6
+              ]
+            ]
+          }
+        ],
+        "gpu_driver_and_library_load_checked": false,
+        "tensorrt_inference_checked": false
+      }
+    },
+    "verify-amd64-gpu-inference.json": {
+      "started": 1793715732.868264,
+      "finished": 1793715886.3261902,
+      "image_id": "sha256:4d5b5a9a334b8666be3c1c822cf68184c7181ab744b7e657020826df83bfb9a0",
+      "returncode": 0,
+      "scope": "Synthetic batch1 ROS detector/TensorRT smoke only; no accuracy or native ARM qualification",
+      "result": {
+        "passed": true,
+        "model_batch": 1,
+        "synthetic_frames_sent": 7,
+        "output_messages": 3,
+        "execution_ms": [
+          4,
+          1,
+          1
+        ],
+        "engine_files": [
+          "detector.engine"
+        ],
+        "preprocessing": "CPU cubic; TensorRT GPU inference",
+        "accuracy_evaluated": false
+      }
+    }
+  },
+  "limitations": [
+    "ARM64 native board and GPU execution not tested",
+    "CenterPoint real LiDAR inference not tested",
+    "Synthetic tests do not establish detection accuracy or end-to-end perception performance",
+    "Continuous detector-classifier replay, multi-camera integration and HIL/vehicle qualification pending",
+    "Remote GHCR publication and manifest verification pending; local image IDs are not registry manifest digests",
+    "Public rebuild wrapper not clean-built on another PC"
+  ],
+  "registry_published": false,
+  "production_defaults_changed": false,
+  "decision_control_images_changed": false
+}
