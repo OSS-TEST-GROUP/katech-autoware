@@ -1,14 +1,60 @@
 # Autoware Partition KATECH 가이드
 
-> Version 1.5 | 2026.07.31
+> 기본 파티션 가이드 Version 1.5 | 인지 CUDA 배포 안내 갱신: 2026.11.04
 
-이 브랜치의 선택형 한국 신호등 인지 추가 사항은
-[한국 신호등 인지 소스 후보](docs/korean-perception-candidate.md)를 참고하십시오.
-아래 기본 No-CUDA 배포 기준은 유지되며, 새 GPU 인지는 HIL/실차 검증 완료본이 아닙니다.
+## 인지 CUDA v0.3.0 배포 안내
 
-2026-11-04 인지 CUDA 두 아키텍처 v0.3.0 패키지의 빌드·검증 결과와 실행 조건은
-[인지 CUDA v0.3.0 안내](docs/perception-cuda-v0.3.0.md)를 참고하십시오.
-패키지 발행 및 원격 manifest 확인 완료(기존 Internal 공개 범위 유지). 아래 기존 No-CUDA 배포 절차를 대체하지 않습니다.
+한국 신호등 YOLOX-S·MobileNetV2 후보 모델을 포함한 **인지 모듈 CUDA v0.3.0**을 발행했습니다.
+두 아키텍처 빌드와 아래 범위의 실행 검사, 원격 manifest 검증을 완료했습니다.
+**패키지 배포 완료는 ARM 실보드 GPU·HIL·실차 검증 완료를 의미하지 않습니다.**
+
+| 이미지 태그 | 대상 |
+| --- | --- |
+| `ghcr.io/oss-test-group/adsw-perception:v0.3.0` | 호스트에 맞게 linux/amd64 또는 linux/arm64 선택 |
+| `ghcr.io/oss-test-group/adsw-perception:v0.3.0-amd64-cuda` | x86-64 PC + NVIDIA GPU |
+| `ghcr.io/oss-test-group/adsw-perception:v0.3.0-arm64-cuda` | Ampere Altra 기반 SBSA ARM64 + NVIDIA 외장 GPU; Jetson 제외 |
+
+이번 v0.3.0은 **adsw-perception만** 해당합니다. 판단·제어 패키지는 변경하지 않았고 두 패키지에는 v0.3.0 태그가 없습니다.
+기존 v0.2.0 및 latest 태그도 유지했습니다. 전체 모듈의 공통 `IMAGE_TAG`를 v0.3.0으로 바꾸지 마십시오.
+
+### 다운로드와 GPU 노출 확인
+
+패키지는 기존 **Internal(조직 내부용)** 범위를 유지합니다. 접근 권한이 있는 계정으로 로그인해야 하며 익명 공개 다운로드가 아닙니다.
+Password에는 `read:packages` 권한이 있는 GitHub 개인 토큰(classic)을 입력합니다. 토큰을 소스·명령줄 인자·채팅에 적지 마십시오.
+호스트에 호환 NVIDIA 드라이버와 NVIDIA Container Toolkit이 준비되어 있어야 합니다.
+
+```bash
+docker login ghcr.io -u YOUR_GITHUB_USERNAME
+docker pull ghcr.io/oss-test-group/adsw-perception:v0.3.0
+docker run --rm --gpus all --entrypoint nvidia-smi \
+  ghcr.io/oss-test-group/adsw-perception:v0.3.0
+```
+
+위 명령은 다운로드와 GPU 노출 확인이며 전체 인지 실행 명령은 아닙니다.
+모델·카메라·ROI 연결과 후보 실행 방법은 [설치·실행 매뉴얼](docs/perception-cuda-v0.3.0.md)을 따르십시오.
+통합 manifest digest는 `sha256:33c290738e467520b73f0d5d0db9e94efb2396ffabe92aaa28a919918d68c258`입니다.
+
+### 검증 범위와 사용 시 주의
+
+- 두 이미지: 모델 4개 무결성, YOLOX/MobileNetV2 batch 1·6 합성 입력 CPU 추론 및 핵심 GPU 라이브러리 ELF 아키텍처 확인 통과.
+- amd64: RTX 4080에서 CUDA 초기화·컴포넌트 로딩, ROS YOLOX TensorRT 엔진 생성·합성 입력/출력 실행 통과. 정확도 측정은 아닙니다.
+- arm64: QEMU CPU 에뮬레이션 검증만 수행했습니다. 실보드 GPU 실행은 미검증입니다.
+- CenterPoint 실제 LiDAR 추론, 전체 인지 정확도·장시간 운용, HIL·실차, 다른 PC의 신규 전체 설치는 미검증입니다.
+- 한국 신호등 모델은 선택형 후보이며 기존 판단기로 자동 연결되지 않습니다. 후보 detector는 TensorRT GPU, classifier 기본값은 ONNX Runtime CPU입니다.
+- TensorRT 엔진은 타겟별로 생성해야 합니다. RTX 4080에서 만든 엔진을 ARM 장비로 복사하지 마십시오.
+- CARLA·C-Track·PCD·비공개 지도 자산은 이 인지 패키지에 포함되지 않습니다.
+
+관련 자료:
+
+- [설치·실행 및 재빌드 매뉴얼](docs/perception-cuda-v0.3.0.md)
+- [실행 검증 기록](docs/perception-cuda-v0.3.0-validation.json) / [원격 발행 검증과 아키텍처별 digest](docs/perception-cuda-v0.3.0-publication.json)
+- [고정 소스 기반 빌드 자료](release/perception-cuda-v0.3.0/) / [한국 신호등 후보 통합 설명](docs/korean-perception-candidate.md)
+- [GitHub Packages](https://github.com/OSS-TEST-GROUP/katech-autoware/pkgs/container/adsw-perception)
+
+## 기존 No-CUDA 파티션 가이드 적용 범위
+
+아래 **1~8절은 기존 No-CUDA Planning Simulation 구성**입니다. 인지 CUDA v0.3.0의 GPU 실행·빌드 절차와 혼용하지 마십시오.
+특히 `--no-cuda`·`--no-nvidia`는 아래 기존 구성에만 해당하며 새 GPU 인지 실행 설정이 아닙니다.
 
 릴리즈 태그와 컨테이너 이미지 발행 절차는
 [KATECH 태깅 및 릴리즈 규칙](docs/release-tagging.md)을 따릅니다.
@@ -34,7 +80,7 @@
 
 표 1. 문서 적용 범위
 
-> 현재 배포 기준 CUDA 빌드와 CUDA 실행은 BSP 보드에서의 RViz 및 runtime 차이를 줄이기 위해 사용하지 않습니다. 이미지 빌드에는 --no-cuda, 수동 실행에는 --no-nvidia를 사용합니다.
+> 이 절의 기존 No-CUDA 구성에서는 BSP 보드의 RViz 및 runtime 차이를 줄이기 위해 CUDA 빌드와 실행을 사용하지 않습니다. 이미지 빌드에는 --no-cuda, 수동 실행에는 --no-nvidia를 사용합니다. 별도 인지 CUDA v0.3.0에는 이 제한을 적용하지 않습니다.
 
 ## 2. Partitioning Approach
 
@@ -270,13 +316,14 @@ map_config.yaml
 
 ### 5.1 사전 빌드 이미지
 
-GitHub Container Registry(GHCR)의 공개 릴리즈 태그는 linux/amd64와 linux/arm64
+GitHub Container Registry(GHCR)의 기존 파티션 릴리즈 태그는 linux/amd64와 linux/arm64
 manifest를 함께 포함합니다. Docker가 host 아키텍처에 맞는 이미지를 자동으로
-선택하므로 아키텍처 접미사나 재태깅이 필요하지 않습니다.
+선택하므로 아키텍처 접미사나 재태깅이 필요하지 않습니다. 패키지 접근 권한을 확인하고 필요하면 먼저 `docker login ghcr.io -u YOUR_GITHUB_USERNAME`으로 인증합니다.
+아래는 세 모듈 모두 태그 존재를 확인한 기존 v0.2.0 예시입니다. 인지 전용 v0.3.0을 공통 태그로 지정하지 마십시오.
 
 ```bash
 IMAGE_NAMESPACE=ghcr.io/oss-test-group
-IMAGE_TAG=v0.1.0
+IMAGE_TAG=v0.2.0
 docker pull "${IMAGE_NAMESPACE}/adsw-perception:${IMAGE_TAG}"
 docker pull "${IMAGE_NAMESPACE}/adsw-decision:${IMAGE_TAG}"
 docker pull "${IMAGE_NAMESPACE}/adsw-control:${IMAGE_TAG}"
@@ -362,7 +409,7 @@ BSP 보드에는 ubuntu-desktop, X11 또는 DISPLAY가 필요하지 않습니다
 
 ```bash
 cd "$HOME/oss/oss_adsw"
-IMAGE_TAG=v0.1.0
+IMAGE_TAG=v0.2.0
 MAP_PATH="$HOME/autoware_map/sample-map-planning"
 ./partition/run_partitions.sh --image-tag "$IMAGE_TAG" --map-path "$MAP_PATH" --domain-id 42 --headless
 ```
@@ -375,7 +422,7 @@ MAP_PATH="$HOME/autoware_map/sample-map-planning"
 
 ```bash
 cd "$HOME/oss/oss_adsw"
-IMAGE_TAG=v0.1.0
+IMAGE_TAG=v0.2.0
 docker pull "ghcr.io/oss-test-group/adsw-perception:${IMAGE_TAG}"
 ./partition/run_remote_rviz.sh --image-tag "$IMAGE_TAG" --domain-id 42
 ```
@@ -427,7 +474,7 @@ sudo reboot
 ```bash
 echo "$DISPLAY"
 cd "$HOME/oss/oss_adsw"
-IMAGE_TAG=v0.1.0
+IMAGE_TAG=v0.2.0
 MAP_PATH="$HOME/autoware_map/sample-map-planning"
 ./partition/run_partitions.sh \
 --image-tag "$IMAGE_TAG" \
@@ -614,10 +661,12 @@ pull access denied
 insufficient_scope: authorization failed
 ```
 
-이미지 경로와 태그를 확인합니다. 공개 배포 repository는
+이미지 경로와 태그를 확인합니다. 패키지 repository는
 `ghcr.io/oss-test-group/adsw-perception`, `adsw-decision`, `adsw-control`입니다.
-직접 빌드 중 `cuda-latest`를 찾는 오류가 발생하면 CUDA 대상이 선택된 것이므로
-`--no-cuda`를 사용합니다.
+인지 패키지는 Internal 범위이므로 계정의 패키지 접근 권한 및 `read:packages` 토큰으로 GHCR 로그인했는지 확인합니다.
+판단·제어 패키지에 인지 전용 v0.3.0 태그를 요청하면 안 됩니다.
+기존 No-CUDA 구성을 직접 빌드하다 `cuda-latest`를 찾는 오류가 발생하면 `--no-cuda`를 사용합니다.
+인지 CUDA v0.3.0을 빌드하려는 경우에는 GPU를 끄지 말고 상단의 별도 재빌드 매뉴얼을 따르십시오.
 
 ### 8.5 Route 또는 Auto 버튼 비활성화
 
@@ -644,7 +693,7 @@ docker exec adsw-decision-42 bash -lc \
 - RViz 기본 창과 최소 설정이 정상적으로 실행되는지 확인합니다.
 - vector_map_marker 또는 map display를 추가하는 시점에 오류가 발생하는지 확인합니다.
 - Perception 로그의 map loader와 marker publisher 상태를 확인합니다.
-- 현재 배포는 CUDA 및 NVIDIA runtime 차이를 제거하기 위해 No-CUDA로 통일합니다.
+- 이 절에서 다루는 기존 BSP Planning Simulation 구성은 No-CUDA 기준입니다. 별도 인지 CUDA v0.3.0의 ARM 실보드 GPU/RViz 검증까지 완료된 것으로 해석하지 마십시오.
 
 ### 8.8 외부 PC RViz에서 topic이 보이지 않음
 
