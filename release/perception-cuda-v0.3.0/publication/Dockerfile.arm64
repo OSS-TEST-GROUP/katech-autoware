@@ -1,0 +1,7 @@
+FROM katech-perception-local:v0.3.0-candidate-arm64-cuda
+LABEL org.opencontainers.image.version="0.3.0" \
+      org.opencontainers.image.ref.name="v0.3.0-arm64-cuda" \
+      org.opencontainers.image.created="2026-11-04T01:36:34Z" \
+      org.opencontainers.image.documentation="https://github.com/OSS-TEST-GROUP/katech-autoware/blob/release/perception-cuda-v0.3.0/docs/perception-cuda-v0.3.0.md" \
+      kr.re.katech.recipe.revision="aaebb56b6fcda3f27ee31373ddf0981abafb8917" \
+      kr.re.katech.validation.base-image="sha256:9f5cff1bc42da05b59805a9167ec3d7ae75b7dc13168ae7294db792ce66bd1dd"

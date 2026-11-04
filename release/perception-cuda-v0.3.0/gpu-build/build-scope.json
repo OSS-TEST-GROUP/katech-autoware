@@ -1,0 +1,15 @@
+{
+  "scope": "perception partition only; not monolithic Autoware launch",
+  "entrypoint_package": "obigo_launch",
+  "excluded_monolithic_package": "autoware_launch",
+  "runtime_algorithms_changed": false,
+  "public_source_modified_or_pushed": false,
+  "metadata_overlays": [
+    "ament_python build type corrected to python3-setuptools dependency",
+    "dummy_perception_publisher renamed to autoware_dummy_perception_publisher"
+  ],
+  "runtime_packaging_overlays": [
+    "Explicit installation of YOLOX GPU preprocessing shared library; GPU-stage-only source overlay",
+    "Remove unresolved unimplemented rotated NMS call; reject rotated=true explicitly, existing plugin always passes false"
+  ]
+}
