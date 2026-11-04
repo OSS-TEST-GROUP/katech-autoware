@@ -135,6 +135,8 @@ ros2 launch autoware_korean_traffic_light_models candidate.launch.py \
 
 발행 목적지는 `ghcr.io/oss-test-group/adsw-perception`이며 두 플랫폼 태그와 통합 v0.3.0의 원격 검증을 완료했습니다.
 업로드 토큰은 사용자 PC에서만 설정했으며 Git/문서에 포함하지 않았습니다.
-기존 v0.2.0 및 latest, 판단·제어 이미지와 SILS 배포는 변경하지 않았습니다. main 병합이나 전체 모듈 Git 릴리스 태그 생성도 수행하지 않았습니다.
+기존 v0.2.0 및 latest, 판단·제어 이미지와 SILS 배포는 변경하지 않았습니다. 전체 모듈 Git 릴리스 태그는 생성하지 않았습니다.
+배포 자료와 README는 `release/perception-cuda-v0.3.0`에서 `main`으로 병합해 관리합니다.
+패키지는 이 저장소에 연결되어 있으며 GitHub Packages의 README는 연결 저장소의 안내를 사용합니다.
 이번 기록은 기존 PC의 검증 결과와 원격 manifest 확인입니다. 다른 PC의 신규 전체 다운로드·실행, ARM 실보드 GPU 시험은 미실시입니다.
 기존 `release/publish-ghcr.sh`는 세 모듈과 latest를 함께 취급하므로 이번 인지 단독 발행에 그대로 사용하지 않습니다.
