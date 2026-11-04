@@ -1,6 +1,8 @@
 {
   "date": "2026-11-03",
-  "status": "locally_built_scoped_checks_passed_registry_auth_pending",
+  "status": "scoped_checks_passed_published_2026_11_04",
+  "publication_evidence": "perception-cuda-v0.3.0-publication.json",
+  "historical_report_note": "Individual reports below retain their original pre-publication timestamps and registry_push=false flags. Publication and metadata-only image IDs are recorded separately.",
   "top_source_commit": "d915aed53ff4d7be880ae32b68100840ef5da0c6",
   "input_sha256": "548bf934c555bf1c25986707593873a9bda43eaaab389d0f63e0fba6890ed4ab",
   "recipe_tests_passed": 17,

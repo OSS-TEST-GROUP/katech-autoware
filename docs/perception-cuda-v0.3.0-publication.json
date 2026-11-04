@@ -1,0 +1,26 @@
+{
+  "images": {
+    "amd64": {
+      "tag": "ghcr.io/oss-test-group/adsw-perception:v0.3.0-amd64-cuda",
+      "image_id": "sha256:99b3f37bc202e2cec8791f535e3b8d5cb18d6cdd00cc882ed675b8f9aa4adde2",
+      "validated_base": "sha256:4d5b5a9a334b8666be3c1c822cf68184c7181ab744b7e657020826df83bfb9a0",
+      "filesystem_and_runtime_config_unchanged": true,
+      "manifest_digest": "sha256:c008816d15e53c85abef6f92f0c9bc38075f260f115ce610e0c9ee4f6bf988d7"
+    },
+    "arm64": {
+      "tag": "ghcr.io/oss-test-group/adsw-perception:v0.3.0-arm64-cuda",
+      "image_id": "sha256:26b074ac96a1f01254b6bbf5bf3996a9a4d461a1a3d7560cd0dcbb6464d2fd61",
+      "validated_base": "sha256:9f5cff1bc42da05b59805a9167ec3d7ae75b7dc13168ae7294db792ce66bd1dd",
+      "filesystem_and_runtime_config_unchanged": true,
+      "manifest_digest": "sha256:d55ceb92ba30d7bf53d25d75749e61f6de55e520e909aa8ed749944a76d46d07"
+    }
+  },
+  "index_digest": "sha256:33c290738e467520b73f0d5d0db9e94efb2396ffabe92aaa28a919918d68c258",
+  "existing_tags_unchanged": true,
+  "native_arm_gpu_validated": false,
+  "hil_vehicle_validated": false,
+  "published_date": "2026-11-04",
+  "visibility": "internal",
+  "repository": "OSS-TEST-GROUP/katech-autoware",
+  "scope": "registry publication and metadata equivalence; not native ARM GPU/HIL/vehicle qualification"
+}

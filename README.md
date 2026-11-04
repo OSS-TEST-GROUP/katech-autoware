@@ -6,9 +6,9 @@
 [한국 신호등 인지 소스 후보](docs/korean-perception-candidate.md)를 참고하십시오.
 아래 기본 No-CUDA 배포 기준은 유지되며, 새 GPU 인지는 HIL/실차 검증 완료본이 아닙니다.
 
-2026-11-03 인지 CUDA 두 아키텍처 후보의 빌드·검증 결과와 실행 조건은
+2026-11-04 인지 CUDA 두 아키텍처 v0.3.0 패키지의 빌드·검증 결과와 실행 조건은
 [인지 CUDA v0.3.0 안내](docs/perception-cuda-v0.3.0.md)를 참고하십시오.
-패키지 업로드 대기 상태이며 아래 기존 No-CUDA 배포 절차를 대체하지 않습니다.
+패키지 발행 및 원격 manifest 확인 완료(기존 Internal 공개 범위 유지). 아래 기존 No-CUDA 배포 절차를 대체하지 않습니다.
 
 릴리즈 태그와 컨테이너 이미지 발행 절차는
 [KATECH 태깅 및 릴리즈 규칙](docs/release-tagging.md)을 따릅니다.

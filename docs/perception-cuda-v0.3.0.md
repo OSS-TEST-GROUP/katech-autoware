@@ -1,7 +1,31 @@
-# 인지 CUDA v0.3.0 후보: 설치·검증 안내
+# 인지 CUDA v0.3.0: 설치·검증 안내
 
-기준일: 2026-11-03. **두 아키텍처 로컬 이미지 빌드 및 아래 범위의 검증 완료, GHCR 업로드는 인증 권한 대기 중입니다.**
-이 문서는 배포 완료를 의미하지 않습니다. 원격 태그와 digest는 업로드 확인 후 추가합니다.
+기준일: 2026-11-04. **amd64 CUDA 및 arm64 SBSA CUDA 패키지 업로드와 원격 manifest 검증 완료.**
+패키지 발행 완료이며, 실보드 GPU·HIL·실차 검증 완료를 의미하지 않습니다. 한국 신호등 모델은 선택형 후보 상태를 유지합니다.
+
+## 배포 이미지
+
+[GitHub Packages의 adsw-perception](https://github.com/OSS-TEST-GROUP/katech-autoware/pkgs/container/adsw-perception)에 다음 태그를 발행했습니다.
+
+| 태그 | 대상 |
+| --- | --- |
+| `v0.3.0` | linux/amd64 및 linux/arm64 자동 선택 |
+| `v0.3.0-amd64-cuda` | x86-64 + NVIDIA GPU |
+| `v0.3.0-arm64-cuda` | SBSA ARM64 + NVIDIA 외장 GPU, Jetson 제외 |
+
+패키지의 기존 공개 범위 **Internal(조직 내부용)**을 유지했습니다. 접근 권한이 있는 계정의 GHCR 로그인이 필요합니다.
+일반 공개·익명 다운로드 가능 상태가 아닙니다. 소스 문서의 공개 여부와 패키지 접근 권한은 별개입니다.
+
+통합 manifest digest: `sha256:33c290738e467520b73f0d5d0db9e94efb2396ffabe92aaa28a919918d68c258`.
+
+| 아키텍처 | 원격 manifest digest |
+| --- | --- |
+| amd64 | `sha256:c008816d15e53c85abef6f92f0c9bc38075f260f115ce610e0c9ee4f6bf988d7` |
+| arm64 | `sha256:d55ceb92ba30d7bf53d25d75749e61f6de55e520e909aa8ed749944a76d46d07` |
+
+원격 config digest가 최종 로컬 이미지 ID와 일치하고, 통합 manifest가 정확한 두 플랫폼을 가리키는지 확인했습니다.
+기존 6개 태그(v0.2.0 및 latest 포함)의 digest는 모두 변경되지 않았습니다.
+[원격 발행 검증 기록](perception-cuda-v0.3.0-publication.json)을 참조하십시오.
 
 ## 범위
 
@@ -41,7 +65,9 @@ ARM64 CPU 추론 성공을 실보드 GPU 정상 작동으로 해석하지 마십
 | arm64 | `sha256:9f5cff1bc42da05b59805a9167ec3d7ae75b7dc13168ae7294db792ce66bd1dd` |
 
 로컬 태그: `katech-perception-local:v0.3.0-candidate-amd64-cuda` / `katech-perception-local:v0.3.0-candidate-arm64-cuda`.
-이미지 OCI version은 아직 `0.3.0-candidate`입니다. 정식 태그 발행·원격 manifest 검증을 완료했다고 주장하지 않습니다.
+위 후보 이미지에 [메타데이터 전용 Dockerfile](../release/perception-cuda-v0.3.0/publication/)을 적용해 OCI version `0.3.0`으로 발행했습니다.
+발행 전 파일 계층(RootFS)과 라벨을 제외한 실행 설정이 검증한 후보와 완전히 동일한지 확인했습니다. 모델·실행 파일 재빌드는 없습니다.
+최종 이미지 ID와 기반 후보의 대응 관계는 원격 발행 검증 기록에 있습니다.
 
 수정 사항:
 
@@ -70,12 +96,21 @@ ARM은 `--arch arm64`와 별도 workspace를 사용합니다. 이 도구는 호�
 
 ## 타겟에서 시작하기
 
-먼저 호스트 `nvidia-smi`와 컨테이너 GPU 노출을 확인합니다. 아직 원격 패키지 발행 전이므로 아래는 로컬 빌드 이미지 기준입니다.
-ARM에서는 태그의 `amd64`를 `arm64`로 변경합니다.
+먼저 호스트 `nvidia-smi`와 컨테이너 GPU 노출을 확인합니다.
+패키지 접근 권한이 있는 계정으로 로그인합니다. Password에는 `read:packages` 권한의 개인 토큰(classic)을 직접 입력하며 토큰을 명령줄·문서에 적지 않습니다.
+통합 태그는 호스트 아키텍처에 맞는 이미지를 선택합니다. 실장비와 맞지 않는 `--platform` 강제 지정으로 GPU 호환성을 해결할 수는 없습니다.
 
 ```bash
+docker login ghcr.io -u YOUR_GITHUB_USERNAME
+docker pull ghcr.io/oss-test-group/adsw-perception:v0.3.0
 docker run --rm --gpus all --entrypoint nvidia-smi \
-  katech-perception-local:v0.3.0-candidate-amd64-cuda
+  ghcr.io/oss-test-group/adsw-perception:v0.3.0
+```
+
+고정된 배포본을 받으려면 태그 대신 통합 digest를 사용할 수 있습니다.
+
+```bash
+docker pull ghcr.io/oss-test-group/adsw-perception@sha256:33c290738e467520b73f0d5d0db9e94efb2396ffabe92aaa28a919918d68c258
 ```
 
 후보 모델 경로는 `/opt/katech/models/korean-traffic-light`입니다. 엔진 캐시는 **타겟별 쓰기 가능한 별도 폴더**를 사용합니다.
@@ -98,8 +133,8 @@ ros2 launch autoware_korean_traffic_light_models candidate.launch.py \
 
 ## 발행 시 지켜야 할 사항
 
-예정 목적지는 `ghcr.io/oss-test-group/adsw-perception` v0.3.0입니다. 현재 인증에는 packages 권한이 없어 업로드하지 못했습니다.
-사용자는 토큰을 채팅에 보내지 말고 로컬 Docker 자격증명 저장소에서 인증해야 합니다.
-두 플랫폼 태그와 통합 manifest를 검증한 뒤 원격 digest를 기록해야 합니다.
-기존 v0.2.0 및 latest, 판단·제어 이미지와 SILS 배포는 변경하지 않습니다.
+발행 목적지는 `ghcr.io/oss-test-group/adsw-perception`이며 두 플랫폼 태그와 통합 v0.3.0의 원격 검증을 완료했습니다.
+업로드 토큰은 사용자 PC에서만 설정했으며 Git/문서에 포함하지 않았습니다.
+기존 v0.2.0 및 latest, 판단·제어 이미지와 SILS 배포는 변경하지 않았습니다. main 병합이나 전체 모듈 Git 릴리스 태그 생성도 수행하지 않았습니다.
+이번 기록은 기존 PC의 검증 결과와 원격 manifest 확인입니다. 다른 PC의 신규 전체 다운로드·실행, ARM 실보드 GPU 시험은 미실시입니다.
 기존 `release/publish-ghcr.sh`는 세 모듈과 latest를 함께 취급하므로 이번 인지 단독 발행에 그대로 사용하지 않습니다.
